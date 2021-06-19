@@ -1,16 +1,25 @@
 import JSON
-
+using DelimitedFiles
 
 session = 21
 
 
-data_dir = "../SKNABillVoteData/data/"
+scrape_data_dir = "../SKNABillVoteData/data/"
 bill_subdir = "bills"
 member_info_filename = "member_info_data_session$(session).json"
 
-member_info_filepath = joinpath(data_dir, member_info_filename)
-bill_dir = joinpath(data_dir, bill_subdir)
+processed_data_dir = "data/"
+processed_member_data_filename = "member_vote_data_session$(session).csv"
+processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 
+
+
+
+# build filepaths
+member_info_filepath = joinpath(scrape_data_dir, member_info_filename)
+bill_dir = joinpath(scrape_data_dir, bill_subdir)
+processed_member_data_filepath = joinpath(processed_data_dir, processed_member_data_filename)
+processed_committee_data_filepath = joinpath(processed_data_dir, processed_committee_data_filename)
 
 
 # import member list
@@ -92,4 +101,28 @@ print("Building committee bill lists...")
 committees = Set(map(x -> x["committee"], bill_dicts))
 committee_bill_list_f = committee_ -> map(x -> x["committee"] == committee_, bill_dicts)
 committee_bill_lists_dict = Dict( committee_ => committee_bill_list_f(committee_) for committee_ in committees)
+println("done")
+
+
+# Save results to csv files
+# Note: I originally wanted to save the bill ids to the first column, but that's
+# just too complicated. We don't really need them anyway. If we want to do more
+# bill processing (e.g., NLP), we should be doing it above here anyway.
+
+# create processed data dir if it doesn't exist
+if ~isdir(processed_data_dir)
+    mkdir(processed_data_dir)
+end
+
+member_data_header = collect(keys(member_vote_lists_dict))
+member_data_header = reshape(member_data_header, 1, length(member_data_header))
+member_data_arr = reduce(hcat, values(member_vote_lists_dict))
+
+committee_data_header = collect(keys(committee_bill_lists_dict))
+committee_data_header = reshape(committee_data_header, 1, length(committee_data_header))
+committee_data_arr = map(Int, reduce(hcat, values(committee_bill_lists_dict)))
+
+print("Writing data...")
+writedlm(processed_member_data_filepath, [member_data_header; member_data_arr], ",")
+writedlm(processed_committee_data_filepath, [committee_data_header; committee_data_arr], ",")
 println("done")

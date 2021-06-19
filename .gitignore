@@ -1,1 +1,4 @@
 Manifest.toml
+
+# later we may want to include the data in the git repository, but let's hold off for now
+data
