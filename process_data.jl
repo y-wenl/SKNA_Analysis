@@ -1,5 +1,6 @@
 import JSON
 using DelimitedFiles
+include("shortcuts.jl")
 
 session = 21
 
@@ -61,7 +62,7 @@ println("done.")
 
 
 
-# for each member, construct a vector of votes: 1 for yes, -1 for no, 0 for abstain, NaN for not present
+# for each member, construct a vector of votes: 1 for yes, -1 for no, 0 for abstain, missing for not present
 
 MemberAgreeOnBill = (member_id_, bill_dict_) -> reduce(|, map(x -> x["member_id"] == member_id_, bill_dict_["members_agree"]), init=false)
 MemberOpposeOnBill = (member_id_, bill_dict_) -> reduce(|, map(x -> x["member_id"] == member_id_, bill_dict_["members_oppose"]), init=false)
@@ -86,7 +87,7 @@ MemberVoteList = member_id_ -> begin
     map(x -> x ?   1 : 0, member_agree_vote_list) +
     map(x -> x ?  -1 : 0, member_oppose_vote_list) +
     map(x -> x ?   0 : 0, member_abstain_vote_list) +
-    map(x -> x ? NaN : 0, member_skip_vote_list)
+    map(x -> x ? missing : 0, member_skip_vote_list)
 end
 
 print("Building member vote lists...")

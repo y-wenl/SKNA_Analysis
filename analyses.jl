@@ -1,5 +1,23 @@
 import JSON
 using DelimitedFiles
+using Statistics
+include("shortcuts.jl")
+
+# Useful functions that should be put somewhere else later
+function MeanNoMissing(vec)
+    vec_nomissing = collect(skipmissing(vec))
+    if length(vec_nomissing) == 0
+        return missing
+    else
+        return mean(vec_nomissing)
+    end
+end
+function MeanMissingZero(vec_)
+    return mean( @_ vec_ |> replace(__, missing => 0) )
+end
+
+# MeanFixMissing = MeanMissingZero
+MeanFixMissing = MeanNoMissing
 
 # Data import and setup
 
@@ -28,32 +46,47 @@ member_info_json = open(member_info_filepath) do f
     read(f, String)
 end
 member_info_dict = JSON.parse(member_info_json)
+member_ids_list = collect(keys(member_info_dict))
 
-# import member vote data
-member_vote_data_in = readdlm(processed_member_data_filepath, ',')
+# import member vote data (and fix "missing" -> missing)
+member_vote_data_in = @_ readdlm(processed_member_data_filepath, ',') |> replace(__, "missing" => missing)
 member_vote_arr = member_vote_data_in[2:end,:]
-member_vote_header = map(string ∘ Int, member_vote_data_in[1,:])
+member_vote_header = string <-- Int <-- member_vote_data_in[1,:]
 member_n = length(member_vote_header)
 member_vote_dict = Dict(member_vote_header[i] => member_vote_arr[:,i] for i in 1:member_n)
 
-# import member vote data
-committee_data_in = readdlm(processed_committee_data_filepath, ',')
+# import member vote data (and fix "missing" -> missing)
+committee_data_in = @_ readdlm(processed_committee_data_filepath, ',') |> replace(__, "missing" => missing)
 committee_arr = committee_data_in[2:end,:]
 committee_header = committee_data_in[1,:]
 committee_n = length(committee_header)
 committee_dict = Dict(committee_header[i] => committee_arr[:,i] for i in 1:committee_n)
+
+bill_n = size(member_vote_arr,1)
+@assert bill_n == size(committee_arr,1)
 
 println("done.")
 
 
 
 # List parties
-parties = map(x -> x["party"], values(member_info_dict)) |> Set
+parties = @_ map(_["party"], values(member_info_dict)) |> Set |> collect
+MembersOfParty = party_ -> (@_ __["member_id"]) <-- @_ filter(_["party"] == party_, collect <| values <| member_info_dict)
+members_by_party = Dict(party_ => MembersOfParty(party_) for party_ in parties)
+
+MeanVotesOfMembers = members_ -> collect(MeanFixMissing((@_ __[i]) <-- (@_ member_vote_dict[_] <-- members_)) for i in 1:bill_n)
+
+party_mean_votes_dict = Dict(party_ => MeanVotesOfMembers(MembersOfParty(party_)) for party_ in parties)
 
 
 
 
-# Compute mean vote for each party on a subset of bill data
-# function PartyMean(party_name, member_vote_data_subset)
-    # filter(x -> , member_vote_data_subset)
-# end
+# difference of each member to their party
+# TODO: come up with a score that weights by how many votes are shared (so that people with only a few votes don't unreasonably high scores)
+#   Could potentially be Bayesian?
+MemberPartyDifference = (member_, party_) -> (member_vote_dict[member_] - party_mean_votes_dict[party_]).^2 |> MeanFixMissing |> sqrt
+diffs_by_member = Dict(member_ =>
+                      (
+                       Dict(party_ => MemberPartyDifference(member_, party_) for party_ in parties)
+                      )
+                      for member_ in member_ids_list)
