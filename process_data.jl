@@ -10,7 +10,7 @@ bill_subdir = "bills"
 member_info_filename = "member_info_data_session$(session).json"
 
 processed_data_dir = "data/"
-processed_bill_data_filename = "bill_data_session$(session).csv"
+processed_bill_data_filename = "bill_data_session$(session).json"
 processed_member_data_filename = "member_vote_data_session$(session).csv"
 processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 
@@ -20,7 +20,6 @@ processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 # build filepaths
 member_info_filepath = joinpath(scrape_data_dir, member_info_filename)
 bill_dir = joinpath(scrape_data_dir, bill_subdir)
-
 processed_bill_data_filepath = joinpath(processed_data_dir, processed_bill_data_filename)
 processed_member_data_filepath = joinpath(processed_data_dir, processed_member_data_filename)
 processed_committee_data_filepath = joinpath(processed_data_dir, processed_committee_data_filename)
@@ -62,11 +61,13 @@ for this_bill_filepath in bill_filepaths
 end
 println("done.")
 
-# reshape bill_dicts for csv output
-bill_data_header = ["bill_id", "vote_date", "result", "name", "committee", "id_master", "bill_no", "kind"]
-bill_data_arr = [[x[y] for y in bill_data_header] for x in bill_dicts]
-bill_data_header = reshape(bill_data_header, 1, length(bill_data_header))
-bill_data_arr = reduce(hcat, bill_data_arr) |> permutedims
+# construct stripped-down version of bill_dicts without vote data, for saving to json
+bill_dicts_lite = deepcopy(bill_dicts)
+keys_to_delete = ["members_agree", "members_oppose", "members_abstain", "summary"]
+for k in keys_to_delete
+    @_ delete!(_, k) <-- bill_dicts_lite
+end
+
 
 
 # for each member, construct a vector of votes: 1 for yes, -1 for no, 0 for abstain, missing for not present
@@ -131,7 +132,11 @@ committee_data_header = reshape(committee_data_header, 1, length(committee_data_
 committee_data_arr = map(Int, reduce(hcat, values(committee_bill_lists_dict)))
 
 print("Writing data...")
-writedlm(processed_bill_data_filepath, [bill_data_header; bill_data_arr], ",")
 writedlm(processed_member_data_filepath, [member_data_header; member_data_arr], ",")
 writedlm(processed_committee_data_filepath, [committee_data_header; committee_data_arr], ",")
+
+# write bill data
+open(processed_bill_data_filepath,"w") do f
+    JSON.print(f, bill_dicts_lite, 4)
+end
 println("done")
