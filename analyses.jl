@@ -15,9 +15,12 @@ end
 function MeanMissingZero(vec_)
     return mean( @_ vec_ |> replace(__, missing => 0) )
 end
-
-# MeanFixMissing = MeanMissingZero
-MeanFixMissing = MeanNoMissing
+function MeanMissingN1(vec_)
+    return mean( @_ vec_ |> replace(__, missing => -1) )
+end
+function RemoveMissing(vec_)
+    return filter(x -> ~ismissing(x), vec_)
+end
 
 # Data import and setup
 
@@ -46,7 +49,7 @@ member_info_json = open(member_info_filepath) do f
     read(f, String)
 end
 member_info_dict = JSON.parse(member_info_json)
-member_ids_list = collect(keys(member_info_dict))
+members = collect(keys(member_info_dict))
 
 # import member vote data (and fix "missing" -> missing)
 member_vote_data_in = @_ readdlm(processed_member_data_filepath, ',') |> replace(__, "missing" => missing)
@@ -54,13 +57,15 @@ member_vote_arr = member_vote_data_in[2:end,:]
 member_vote_header = string <-- Int <-- member_vote_data_in[1,:]
 member_n = length(member_vote_header)
 member_vote_dict = Dict(member_vote_header[i] => member_vote_arr[:,i] for i in 1:member_n)
+member_vote_dict_missingzero = Dict(member_vote_header[i] => replace(member_vote_arr[:,i], missing => 0) for i in 1:member_n)
+member_vote_dict_missingn1 = Dict(member_vote_header[i] => replace(member_vote_arr[:,i], missing => -1) for i in 1:member_n)
 
 # import member vote data (and fix "missing" -> missing)
 committee_data_in = @_ readdlm(processed_committee_data_filepath, ',') |> replace(__, "missing" => missing)
 committee_arr = committee_data_in[2:end,:]
-committee_header = committee_data_in[1,:]
-committee_n = length(committee_header)
-committee_dict = Dict(committee_header[i] => committee_arr[:,i] for i in 1:committee_n)
+committees = committee_data_in[1,:]
+committee_n = length(committees)
+committee_dict = Dict(committees[i] => committee_arr[:,i] for i in 1:committee_n)
 
 bill_n = size(member_vote_arr,1)
 @assert bill_n == size(committee_arr,1)
@@ -74,9 +79,15 @@ parties = @_ map(_["party"], values(member_info_dict)) |> Set |> collect
 MembersOfParty = party_ -> (@_ __["member_id"]) <-- @_ filter(_["party"] == party_, collect <| values <| member_info_dict)
 members_by_party = Dict(party_ => MembersOfParty(party_) for party_ in parties)
 
-MeanVotesOfMembers = members_ -> collect(MeanFixMissing((@_ __[i]) <-- (@_ member_vote_dict[_] <-- members_)) for i in 1:bill_n)
+MeanVotesOfMembersNoMissing = members_ -> collect(MeanNoMissing((@_ __[i]) <-- (@_ member_vote_dict[_] <-- members_)) for i in 1:bill_n)
+MeanVotesOfMembersMissingZero = members_ -> collect(MeanMissingZero((@_ __[i]) <-- (@_ member_vote_dict[_] <-- members_)) for i in 1:bill_n)
+MeanVotesOfMembersMissingN1 = members_ -> collect(MeanMissingN1((@_ __[i]) <-- (@_ member_vote_dict[_] <-- members_)) for i in 1:bill_n)
 
-party_mean_votes_dict = Dict(party_ => MeanVotesOfMembers(MembersOfParty(party_)) for party_ in parties)
+party_mean_votes_nomissing_dict = Dict(party_ => MeanVotesOfMembersNoMissing(MembersOfParty(party_)) for party_ in parties)
+party_mean_votes_missingzero_dict = Dict(party_ => MeanVotesOfMembersMissingZero(MembersOfParty(party_)) for party_ in parties)
+party_mean_votes_missingn1_dict = Dict(party_ => MeanVotesOfMembersMissingN1(MembersOfParty(party_)) for party_ in parties)
+
+party_abs_votes_dict = Dict(party_ => (sign <-- party_mean_votes_nomissing_dict[party_]) for party_ in parties)
 
 
 
@@ -84,9 +95,53 @@ party_mean_votes_dict = Dict(party_ => MeanVotesOfMembers(MembersOfParty(party_)
 # difference of each member to their party
 # TODO: come up with a score that weights by how many votes are shared (so that people with only a few votes don't unreasonably high scores)
 #   Could potentially be Bayesian?
-MemberPartyDifference = (member_, party_) -> (member_vote_dict[member_] - party_mean_votes_dict[party_]).^2 |> MeanFixMissing |> sqrt
-diffs_by_member = Dict(member_ =>
+MemberPartyDifferenceNoMissing = (member_, party_) -> (member_vote_dict[member_] - party_mean_votes_nomissing_dict[party_]).^2 |> MeanNoMissing |> sqrt
+MemberPartyDifferenceMissingZero = (member_, party_) -> (member_vote_dict_missingzero[member_] - party_mean_votes_missingzero_dict[party_]).^2 |> MeanMissingZero |> sqrt
+MemberPartyDifferenceMissingN1 = (member_, party_) -> (member_vote_dict_missingn1[member_] - party_mean_votes_missingn1_dict[party_]).^2 |> MeanMissingN1 |> sqrt
+
+diffs_by_member_nomissing = Dict(member_ =>
                       (
-                       Dict(party_ => MemberPartyDifference(member_, party_) for party_ in parties)
+                       Dict(party_ => MemberPartyDifferenceNoMissing(member_, party_) for party_ in parties)
                       )
-                      for member_ in member_ids_list)
+                      for member_ in members)
+
+diffs_by_member_missingzero = Dict(member_ =>
+                      (
+                       Dict(party_ => MemberPartyDifferenceMissingZero(member_, party_) for party_ in parties)
+                      )
+                      for member_ in members)
+
+diffs_by_member_missingn1 = Dict(member_ =>
+                      (
+                       Dict(party_ => MemberPartyDifferenceMissingN1(member_, party_) for party_ in parties)
+                      )
+                      for member_ in members)
+
+# Other measures of party loyalty
+#loyalty_by_vote_pct
+MemberLoyaltyByPct = member_ -> (((party_abs_votes_dict[member_info_dict[member_]["party"]] - member_vote_dict[member_]) |> RemoveMissing) |> (@_ (count(x -> (abs(x) < 1E-8), __) / length(__))))
+member_loyalty_by_pct = Dict{String, Union{Missing, Number}}(member_ => MemberLoyaltyByPct(member_) for member_ in members)
+
+member_loyalty_by_diff_nomissing = Dict{String, Union{Missing, Number}}(member_ => 1 - 0.5*diffs_by_member_nomissing[member_][member_info_dict[member_]["party"]] for member_ in members)
+
+# eliminate unaffiliated members ("무소속")
+for member_ in members_by_party["무소속"]
+    member_loyalty_by_pct[member_] = missing
+    member_loyalty_by_diff_nomissing[member_] = missing
+end
+
+
+# Absentee rates
+MissingPercent = vec_ -> 1 - ( length(vec_ |> RemoveMissing) / length(vec_) )
+
+# member_absenteeism = Dict(member_ => member_vote_dict[member_] |> (@_ 1 - (length(__ |> RemoveMissing) / length(__))) for member_ in members)
+member_absenteeism = Dict(member_ => member_vote_dict[member_] |> MissingPercent for member_ in members)
+
+# absenteeism by committee
+MemberVoteCommitteeSubset = (member_, committee_) -> ( @_ _[1] <-- filter(x -> x[2]==1, collect <| zip(member_vote_dict[member_], committee_dict[committee_])) )
+member_absenteeism_by_committee = Dict(member_ =>
+   Dict(committee_ =>
+        MemberVoteCommitteeSubset(member_, committee_) |> MissingPercent
+        for committee_ in committees
+       )
+   for member_ in members)
