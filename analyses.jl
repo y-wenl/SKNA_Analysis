@@ -1,6 +1,7 @@
 import JSON
 using DelimitedFiles
 using Statistics
+using Dates
 include("shortcuts.jl")
 
 # Useful functions that should be put somewhere else later
@@ -20,6 +21,33 @@ function MeanMissingN1(vec_)
 end
 function RemoveMissing(vec_)
     return filter(x -> ~ismissing(x), vec_)
+end
+function AgeFromDOB(dob_str)
+    if typeof(dob_str) != String
+        return missing
+    end
+    if match(r"[12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]", dob_str) |> isnothing
+        return missing
+    end
+
+    local dob = Date(dob_str)
+    local hoy = today()
+    local age = Dates.year(hoy) - Dates.year(dob)
+    if (Dates.month(hoy) < Dates.month(dob)) ||
+        (
+        (Dates.month(hoy) == Dates.month(dob)) &&
+        (Dates.day(hoy) < Dates.day(dob))
+       )
+        age = age - 1
+
+        earlier_date = Date(string(Dates.year(hoy) - 1)*"-"*Dates.format(dob, "mm-dd"))
+    else
+        earlier_date = Date(string(Dates.year(hoy) - 0)*"-"*Dates.format(dob, "mm-dd"))
+    end
+    # add in days
+    age = age + Dates.value(hoy - earlier_date)/365
+
+    return age
 end
 
 # Data import and setup
@@ -145,3 +173,8 @@ member_absenteeism_by_committee = Dict(member_ =>
         for committee_ in committees
        )
    for member_ in members)
+
+
+
+# ages
+member_ages = Dict(member_ => AgeFromDOB(member_info_dict[member_]["dob"]) for member_ in members)
