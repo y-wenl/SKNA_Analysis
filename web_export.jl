@@ -1,6 +1,8 @@
 import JSON
 
-output_data_dir = "webdata/"
+data_super_dir = "../data/"
+
+output_data_dir = joinpath(data_super_dir, "webdata/")
 output_member_data_dir = joinpath(output_data_dir, "members/")
 member_data_filename_base = "member_vote_data_SESSION_ID.json"
 member_list_filename_base = "members_data_SESSION.json"

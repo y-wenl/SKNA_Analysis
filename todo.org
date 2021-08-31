@@ -1,5 +1,6 @@
-* Loyalty
-- Compare rank by % of time voting w/ majority and Euclidean diff
-* Code
-- Use ipynb for practice only; migrate final analysis to analysis script and
-  json/hugo export to another script
+* Loyalty analysis
+** TODO Compare rank by % of time voting w/ majority and Euclidean diff
+
+* Misc issues
+** TODO account for members who left the assembly early / joined late
+** TODO run for multiple sessions

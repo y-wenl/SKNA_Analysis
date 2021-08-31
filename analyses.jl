@@ -54,11 +54,13 @@ end
 
 session = 21
 
-scrape_data_dir = "../SKNABillVoteData/data/"
+data_super_dir = "../data/"
+
+scrape_data_dir = data_super_dir
 bill_subdir = "bills"
 member_info_filename = "member_info_data_session$(session).json"
 
-processed_data_dir = "data/"
+processed_data_dir = joinpath(data_super_dir, "processed/")
 processed_member_data_filename = "member_vote_data_session$(session).csv"
 processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 
