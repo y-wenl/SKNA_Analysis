@@ -12,18 +12,6 @@ session = 21
 # Run analyses.jl first
 include("analyses.jl")
 
-# Then read bill data
-processed_bill_data_filename = "bill_data_session$(session).json"
-processed_bill_data_filepath = joinpath(processed_data_dir, processed_bill_data_filename)
-bill_data_json = open(processed_bill_data_filepath) do f
-        read(f, String)
-end
-bill_dicts = JSON.parse(bill_data_json)
-
-
-
-
-
 
 # create directories if necessary
 if ~isdir(output_data_dir)
@@ -77,7 +65,9 @@ for this_member in members
 
     this_member_party = member_info_dict[this_member]["party"]
 
-    this_member_votes = member_vote_dict[this_member]
+    this_member_votes = member_vote_dict_with_ignores[this_member]
+    this_member_vote_indices = findall(x -> ismissing(x) || (x != "ignore"), this_member_votes)
+
     this_party_votes = party_abs_votes_dict[this_member_party]
 
     this_member_bill_header = [
@@ -103,7 +93,7 @@ for this_member in members
                               bill_dicts[j]["bill_no"],
                               bill_dicts[j]["id_master"],
                              ]
-                             for j in 1:length(this_member_votes)
+                             for j in this_member_vote_indices
                             ]
     @assert(length(this_member_bill_header) == length(this_member_bill_data[1]))
     open(this_filepath,"w") do f
