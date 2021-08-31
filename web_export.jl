@@ -64,7 +64,7 @@ member_list_data = [
                         ]
 @assert(length(member_list_header) == length(member_list_data[1]))
 open(member_list_filepath,"w") do f
-    JSON.print(f, Dict(["header"=>member_list_header, "data"=>member_list_data]))
+    JSON.print(f, Dict(["header"=>member_list_header, "data"=>member_list_data]), 0)
 end
 
 
@@ -107,7 +107,7 @@ for this_member in members
                             ]
     @assert(length(this_member_bill_header) == length(this_member_bill_data[1]))
     open(this_filepath,"w") do f
-        JSON.print(f, Dict(["header"=>this_member_bill_header, "data"=>this_member_bill_data]))
+        JSON.print(f, Dict(["header"=>this_member_bill_header, "data"=>this_member_bill_data]), 0)
     end
 end
 print("done\n")
