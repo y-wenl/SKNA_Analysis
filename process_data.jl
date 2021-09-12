@@ -12,7 +12,7 @@ member_info_filename = "member_info_data_session$(session).json"
 
 processed_data_dir = joinpath(data_super_dir, "processed/")
 processed_bill_data_filename = "bill_data_session$(session).json"
-processed_member_data_filename = "member_vote_data_session$(session).csv"
+processed_vote_data_filename = "member_vote_data_session$(session).csv"
 processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 
 
@@ -22,7 +22,7 @@ processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 member_info_filepath = joinpath(scrape_data_dir, member_info_filename)
 bill_dir = joinpath(scrape_data_dir, bill_subdir)
 processed_bill_data_filepath = joinpath(processed_data_dir, processed_bill_data_filename)
-processed_member_data_filepath = joinpath(processed_data_dir, processed_member_data_filename)
+processed_vote_data_filepath = joinpath(processed_data_dir, processed_vote_data_filename)
 processed_committee_data_filepath = joinpath(processed_data_dir, processed_committee_data_filename)
 
 
@@ -133,7 +133,7 @@ committee_data_header = reshape(committee_data_header, 1, length(committee_data_
 committee_data_arr = map(Int, reduce(hcat, values(committee_bill_lists_dict)))
 
 print("Writing data...")
-writedlm(processed_member_data_filepath, [member_data_header; member_data_arr], ",")
+writedlm(processed_vote_data_filepath, [member_data_header; member_data_arr], ",")
 writedlm(processed_committee_data_filepath, [committee_data_header; committee_data_arr], ",")
 
 # write bill data

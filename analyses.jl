@@ -68,7 +68,7 @@ member_info_filename = "member_info_data_session$(session).json"
 member_reps_filename = "member_replacements.yaml"
 
 processed_data_dir = joinpath(data_super_dir, "processed/")
-processed_member_data_filename = "member_vote_data_session$(session).csv"
+processed_vote_data_filename = "member_vote_data_session$(session).csv"
 processed_committee_data_filename = "committee_bill_data_session$(session).csv"
 processed_bill_data_filename = "bill_data_session$(session).json"
 
@@ -77,7 +77,7 @@ processed_bill_data_filename = "bill_data_session$(session).json"
 member_info_filepath = joinpath(scrape_data_dir, member_info_filename)
 member_reps_filepath = joinpath(scrape_data_dir, member_reps_filename)
 bill_dir = joinpath(scrape_data_dir, bill_subdir)
-processed_member_data_filepath = joinpath(processed_data_dir, processed_member_data_filename)
+processed_vote_data_filepath = joinpath(processed_data_dir, processed_vote_data_filename)
 processed_committee_data_filepath = joinpath(processed_data_dir, processed_committee_data_filename)
 
 
@@ -91,7 +91,7 @@ member_info_dict = JSON.parse(member_info_json)
 members = collect(keys(member_info_dict))
 
 # import member vote data (and fix "missing" -> missing)
-member_vote_data_in = @_ readdlm(processed_member_data_filepath, ',') |> replace(__, "missing" => missing)
+member_vote_data_in = @_ readdlm(processed_vote_data_filepath, ',') |> replace(__, "missing" => missing)
 member_vote_arr = member_vote_data_in[2:end,:]
 member_vote_header = string <-- Int <-- member_vote_data_in[1,:]
 member_n = length(member_vote_header)
