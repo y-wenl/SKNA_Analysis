@@ -1,5 +1,9 @@
 name: SKNA Data Analyzer
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 jobs:
   Analyze-SKNA-Data:
     runs-on: ubuntu-latest
@@ -8,6 +12,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: analysis
+          repository: y-wenl/SKNA_Analysis
+          token: ${{ secrets.PAT }}
       - name: Check out data
         uses: actions/checkout@v2
         with:
