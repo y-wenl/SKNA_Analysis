@@ -8,4 +8,4 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
 Julia = "1.6"
-Underscores = "2"
+Underscores = "= 2.0.0"
