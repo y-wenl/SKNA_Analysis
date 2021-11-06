@@ -66,7 +66,7 @@ println("done.")
 bill_dicts_lite = deepcopy(bill_dicts)
 keys_to_delete = ["members_agree", "members_oppose", "members_abstain", "summary"]
 for k in keys_to_delete
-    @_ delete!(_, k) <-- bill_dicts_lite
+    map(this_bill_dict -> delete!(this_bill_dict, k), bill_dicts_lite)
 end
 
 
