@@ -1,9 +1,10 @@
 Manifest.toml
 
-# later we may want to include the data in the git repository, but let's hold off for now
-data
-webdata
+# note that data should be saved in another repository
 
 # Ignore ipynb, since we use jupytext to export to jl
 .ipynb_checkpoints
 *.ipynb
+
+# create keyword ignore for scratch work
+ignore
