@@ -5,6 +5,7 @@ Manifest.toml
 # Ignore ipynb, since we use jupytext to export to jl
 .ipynb_checkpoints
 *.ipynb
+__pycache__
 
 # create keyword ignore for scratch work
 ignore
