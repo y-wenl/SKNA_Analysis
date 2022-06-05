@@ -29,9 +29,15 @@ processed_committee_data_filename = f"committee_bill_data_session{session}.csv"
 
 member_info_filepath = os.path.join(scrape_data_dir, member_info_filename)
 bill_dir = os.path.join(scrape_data_dir, bill_subdir)
-processed_bill_data_filepath = os.path.join(processed_data_dir, processed_bill_data_filename)
-processed_vote_data_filepath = os.path.join(processed_data_dir, processed_vote_data_filename)
-processed_committee_data_filepath = os.path.join(processed_data_dir, processed_committee_data_filename)
+processed_bill_data_filepath = os.path.join(
+    processed_data_dir, processed_bill_data_filename
+)
+processed_vote_data_filepath = os.path.join(
+    processed_data_dir, processed_vote_data_filename
+)
+processed_committee_data_filepath = os.path.join(
+    processed_data_dir, processed_committee_data_filename
+)
 
 print("Reading member data")
 
@@ -45,11 +51,11 @@ print("Reading bill data")
 # import bill data
 bill_filepaths = glob.glob(os.path.join(bill_dir, f"bill_data_session{session}_*json"))
 bill_filepaths = sorted(bill_filepaths)
-assert(len(bill_filepaths) > 0)
+assert len(bill_filepaths) > 0
 
 if debug:
     print("WARNING: DEBUG ENGAGED")
-    bill_filepaths = bill_filepaths[0:10] # DEBUG only do 10 bills
+    bill_filepaths = bill_filepaths[0:10]  # DEBUG only do 10 bills
 
 
 # read in bill data
@@ -76,33 +82,69 @@ def memberid_to_votevector(member_id):
     abstain_val = 0
 
     # Note: np doesn't support nan with ints, so we use pd.Int8Dtype
-    agree_vector = pd.array([1 if member_id in [_['member_id'] for _ in bill_data['members_agree']] else 0 for bill_data in bill_dicts]).astype(pd.Int8Dtype())
-    oppose_vector = pd.array([1 if member_id in [_['member_id'] for _ in bill_data['members_oppose']] else 0 for bill_data in bill_dicts]).astype(pd.Int8Dtype())
-    abstain_vector = pd.array([1 if member_id in [_['member_id'] for _ in bill_data['members_abstain']] else 0 for bill_data in bill_dicts]).astype(pd.Int8Dtype())
+    agree_vector = pd.array(
+        [
+            1
+            if member_id in [_["member_id"] for _ in bill_data["members_agree"]]
+            else 0
+            for bill_data in bill_dicts
+        ]
+    ).astype(pd.Int8Dtype())
+    oppose_vector = pd.array(
+        [
+            1
+            if member_id in [_["member_id"] for _ in bill_data["members_oppose"]]
+            else 0
+            for bill_data in bill_dicts
+        ]
+    ).astype(pd.Int8Dtype())
+    abstain_vector = pd.array(
+        [
+            1
+            if member_id in [_["member_id"] for _ in bill_data["members_abstain"]]
+            else 0
+            for bill_data in bill_dicts
+        ]
+    ).astype(pd.Int8Dtype())
 
     # skip vector puts nan on every vote for which the member is registered as none of agree, oppose, or abstain
-    skip_vector_nan = pd.array([np.nan if (x == 0) else 0 for x in (agree_vector + oppose_vector + abstain_vector)]).astype(pd.Int8Dtype())
+    skip_vector_nan = pd.array(
+        [
+            np.nan if (x == 0) else 0
+            for x in (agree_vector + oppose_vector + abstain_vector)
+        ]
+    ).astype(pd.Int8Dtype())
 
-    assert(len(agree_vector) == len(bill_dicts))
-    assert(len(oppose_vector) == len(bill_dicts))
-    assert(len(abstain_vector) == len(bill_dicts))
-    assert(np.dot(agree_vector,   oppose_vector)  == 0)
-    assert(np.dot(oppose_vector,  abstain_vector) == 0)
-    assert(np.dot(abstain_vector, agree_vector)   == 0)
+    assert len(agree_vector) == len(bill_dicts)
+    assert len(oppose_vector) == len(bill_dicts)
+    assert len(abstain_vector) == len(bill_dicts)
+    assert np.dot(agree_vector, oppose_vector) == 0
+    assert np.dot(oppose_vector, abstain_vector) == 0
+    assert np.dot(abstain_vector, agree_vector) == 0
 
-    output_vector = (agree_val*agree_vector + oppose_val*oppose_vector + abstain_val*abstain_vector + skip_vector_nan)
-    assert(len(output_vector) == len(bill_dicts))
+    output_vector = (
+        agree_val * agree_vector
+        + oppose_val * oppose_vector
+        + abstain_val * abstain_vector
+        + skip_vector_nan
+    )
+    assert len(output_vector) == len(bill_dicts)
     return output_vector
 
-member_votes_dict = {member_id: memberid_to_votevector(member_id) for member_id in member_ids}
 
+member_votes_dict = {
+    member_id: memberid_to_votevector(member_id) for member_id in member_ids
+}
 
 
 ##### COMMITTEES #####
 print("Constructing committee data")
 # Construct lists for committees
 committees = sorted(list(set([x["committee"] for x in bill_dicts])))
-committees_bill_dict = {committee: np.array([bd["committee"] == committee for bd in bill_dicts]).astype(int) for committee in committees}
+committees_bill_dict = {
+    committee: np.array([bd["committee"] == committee for bd in bill_dicts]).astype(int)
+    for committee in committees
+}
 # committee_data_array = np.array([[bd["committee"] == committee for committee in committees] for bd in bill_dicts]).astype(int)
 
 
@@ -118,11 +160,15 @@ if not os.path.isdir(processed_data_dir):
 
 # create member data with header
 member_votes_df = pd.DataFrame(member_votes_dict, columns=member_ids)
-member_votes_df.insert(0, "bill_id", [x["bill_id"] for x in bill_dicts_lite], allow_duplicates=False)
+member_votes_df.insert(
+    0, "bill_id", [x["bill_id"] for x in bill_dicts_lite], allow_duplicates=False
+)
 
 # create committee data with header
 committees_bill_df = pd.DataFrame(committees_bill_dict, columns=committees)
-committees_bill_df.insert(0, "bill_id", [x["bill_id"] for x in bill_dicts_lite], allow_duplicates=False)
+committees_bill_df.insert(
+    0, "bill_id", [x["bill_id"] for x in bill_dicts_lite], allow_duplicates=False
+)
 
 if not debug:
     print("Writing data")
