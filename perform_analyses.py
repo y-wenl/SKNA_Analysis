@@ -52,20 +52,33 @@ with open(member_info_filepath, "r") as f:
 member_ids = sorted(member_info_data.keys())
 
 # import member vote data
-member_vote_df = pd.read_csv(processed_vote_data_filepath)
-bill_ids = list(member_vote_df["bill_id"])
+member_vote_df_full = pd.read_csv(processed_vote_data_filepath)
+member_n = len(member_vote_df_full.columns) - 1
+bill_ids_member = list(member_vote_df_full["bill_id"])
+member_ids_in_df = sorted(
+    [x for x in list(member_vote_df_full.columns) if x != "bill_id"]
+)
+assert set(member_ids) == set(member_ids_in_df)
+member_vote_df = member_vote_df_full[member_ids]  # remove bill_id column
 
 # import committee data
-committee_bill_df = pd.read_csv(processed_committee_data_filepath)
-bill_ids_committee = list(committee_bill_df["bill_id"])
-# ensure that bill data is in the correct order
-assert all([x == y for x, y in zip(bill_ids, bill_ids_committee)])
+committee_bill_df_full = pd.read_csv(processed_committee_data_filepath)
+committee_n = len(committee_bill_df_full.columns) - 1
+bill_ids_committee = list(committee_bill_df_full["bill_id"])
+committees = sorted([x for x in list(committee_bill_df_full.columns) if x != "bill_id"])
+committee_bill_df = committee_bill_df_full[committees]  # remove bill_id column
 
 # import bill data
 print("Reading bill data")
 assert os.path.isfile(processed_bill_data_filepath)
 with open(processed_bill_data_filepath, "r") as f:
     bill_data = json.load(f)
+bill_ids = [x["bill_id"] for x in bill_data]
+bill_n = len(bill_ids)
+
+# ensure that bill data is in the correct order
+assert all([x == y for x, y in zip(bill_ids, bill_ids_member)])
+assert all([x == y for x, y in zip(bill_ids, bill_ids_committee)])
 
 
 # import member replacement data and validate it
@@ -86,3 +99,41 @@ for mrd in input_member_reps_datas:
             assert member_info_data[this_id]["name"] == this_name
             member_reps_dict[this_id] = this_mr
         break
+
+
+##### Compute means and party differences #####
+
+# List parties
+parties = sorted(list(set([member_info_data[x]["party"] for x in member_ids])))
+members_by_party = {
+    party: [x for x in member_ids if member_info_data[x]["party"] == party]
+    for party in parties
+}
+
+# Compute party data for each bill
+# 1) mean
+# 2) sign of mean (is most of party for or against)
+# 3) number and percent of party members voting (in any direction)
+# Note: we ignore missing votes, but abstentions are 0
+party_mean_df = pd.DataFrame(
+    {party: member_vote_df[members_by_party[party]].mean(axis=1) for party in parties},
+    columns=parties,
+)
+party_sign_df = party_mean_df.applymap(np.sign)
+
+member_didvote_df = member_vote_df.applymap(lambda x: int(not np.isnan(x)))
+party_numvoted_df = pd.DataFrame(
+    {
+        party: member_didvote_df[members_by_party[party]].sum(axis=1)
+        for party in parties
+    },
+    columns=parties,
+)
+party_percvoted_df = pd.DataFrame(
+    {
+        party: member_didvote_df[members_by_party[party]].sum(axis=1)
+        / len(members_by_party[party])
+        for party in parties
+    },
+    columns=parties,
+)
