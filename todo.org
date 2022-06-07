@@ -2,5 +2,6 @@
 ** TODO Compare rank by % of time voting w/ majority and Euclidean diff
 
 * Misc issues
-** TODO account for members who left the assembly early / joined late
+** DONE account for members who left the assembly early / joined late
+** TODO compute an "unusualness" score for bills
 ** TODO run for multiple sessions
