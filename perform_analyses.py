@@ -122,6 +122,7 @@ party_mean_df = pd.DataFrame(
 party_sign_df = party_mean_df.applymap(np.sign)
 
 member_didvote_df = member_vote_df.applymap(lambda x: int(not np.isnan(x)))
+member_votenan_df = member_vote_df.applymap(lambda x: 1 if not np.isnan(x) else np.nan)
 party_numvoted_df = pd.DataFrame(
     {
         party: member_didvote_df[members_by_party[party]].sum(axis=1)
@@ -137,3 +138,34 @@ party_percvoted_df = pd.DataFrame(
     },
     columns=parties,
 )
+
+
+# difference of each member to their party
+# TODO: come up with a score that weights by how many votes are shared (so that people with only a few votes don't unreasonably high scores)
+#   Could potentially be Bayesian?
+
+# Idea: let v_p represent the mean party vote vector and v_i be some individual vote vector
+# We will define party loyalty as v_p . v_i, normalized
+# Let n_p and n_i be the number of non-nan votes. Note that n_p >= n_i.
+# Then, (1/n_i) v_p . v_i is the numerator, and must be between -1 and 1.
+# We normalize this by sqrt[ (1/n_p) v_p . v_p ], i.e., the root mean party vote.
+
+# old method loyalty score: 1 - 0.5 sqrt[ (vi - vp)^2/n_i  ]
+
+normalized_dot = lambda u,v : np.nansum(u*v)/((u*v).count())
+normalized_dotself = lambda u : normalized_dot(u,u)
+
+vivp = {}
+loyalty_score_dotmethod = {}
+loyalty_score_old = {}
+loyalty_score_absmethod = {}
+for party in parties:
+    for mid in members_by_party[party]:
+        vivp[mid] = normalized_dot(member_vote_df[mid],party_mean_df[party])
+        vpvp = np.sqrt(normalized_dot(member_votenan_df[mid]*party_mean_df[party],member_votenan_df[mid]*party_mean_df[party]))
+        vivi = np.sqrt(normalized_dot(member_vote_df[mid],member_vote_df[mid]))
+        loyalty_score_dotmethod[mid] = vivp[mid]/(vpvp*vivi)
+
+        loyalty_score_old[mid] = 1 - 0.5*np.sqrt(normalized_dotself(member_vote_df[mid] - party_mean_df[party]))
+
+        loyalty_score_absmethod[mid] = normalized_dotself(member_vote_df[mid] * party_sign_df[party])
