@@ -105,11 +105,13 @@ for mrd in input_member_reps_datas:
 # Create data on member voting: nan for not in chamber (left or not yet joined); 1 for voted; 0 for absent
 member_didvote_df = member_vote_df.applymap(lambda x: int(not np.isnan(x)))
 bill_dates = [ymd_to_date(x["vote_date"]) for x in bill_data]
-bill_dates_df = pd.DataFrame({"bill_date":bill_dates})
+bill_dates_df = pd.DataFrame({"bill_date": bill_dates})
 
 for mid in member_reps_dict:
     this_mr = member_reps_dict[mid]
-    this_voted_dates = [b for b,_ in zip(bill_dates, list(member_didvote_df[mid])) if _ == 1]
+    this_voted_dates = [
+        b for b, _ in zip(bill_dates, list(member_didvote_df[mid])) if _ == 1
+    ]
 
     if "date_left" in this_mr:
         left_date = ymd_to_date(this_mr["date_left"])
@@ -117,11 +119,15 @@ for mid in member_reps_dict:
             last_vote_date = max(this_voted_dates)
             if left_date != last_vote_date:
                 if left_date < last_vote_date:
-                    print(f"WARNING! YAML states {member_info_data[mid]['name']} ({mid}) left office on {left_date} but last vote was {last_vote_date}.")
+                    print(
+                        f"WARNING! YAML states {member_info_data[mid]['name']} ({mid}) left office on {left_date} but last vote was {last_vote_date}."
+                    )
                 else:
-                    print(f"YAML states {member_info_data[mid]['name']} ({mid}) left office on {left_date}; last vote was {last_vote_date}. (OK)")
+                    print(
+                        f"YAML states {member_info_data[mid]['name']} ({mid}) left office on {left_date}; last vote was {last_vote_date}. (OK)"
+                    )
 
-        member_didvote_df.loc[bill_dates_df["bill_date"]>left_date, mid] = np.nan
+        member_didvote_df.loc[bill_dates_df["bill_date"] > left_date, mid] = np.nan
 
     if "date_joined" in this_mr:
         joined_date = ymd_to_date(this_mr["date_joined"])
@@ -129,12 +135,15 @@ for mid in member_reps_dict:
             first_vote_date = min(this_voted_dates)
             if joined_date != first_vote_date:
                 if joined_date > first_vote_date:
-                    print(f"WARNING! YAML states {member_info_data[mid]['name']} ({mid}) joined office on {joined_date} but first vote was {first_vote_date}.")
+                    print(
+                        f"WARNING! YAML states {member_info_data[mid]['name']} ({mid}) joined office on {joined_date} but first vote was {first_vote_date}."
+                    )
                 else:
-                    print(f"YAML states {member_info_data[mid]['name']} ({mid}) joined office on {joined_date}; first vote was {first_vote_date}. (OK)")
+                    print(
+                        f"YAML states {member_info_data[mid]['name']} ({mid}) joined office on {joined_date}; first vote was {first_vote_date}. (OK)"
+                    )
 
-        member_didvote_df.loc[bill_dates_df["bill_date"]<joined_date, mid] = np.nan
-
+        member_didvote_df.loc[bill_dates_df["bill_date"] < joined_date, mid] = np.nan
 
 
 member_votenan_df = member_vote_df.applymap(lambda x: 1 if not np.isnan(x) else np.nan)
@@ -190,33 +199,76 @@ party_percvoted_df = pd.DataFrame(
 
 # old method loyalty score: 1 - 0.5 sqrt[ (vi - vp)^2/n_i  ]
 
-normalized_dot = lambda u,v : np.nansum(u*v)/((u*v).count())
-normalized_dotself = lambda u : normalized_dot(u,u)
+normalized_dot = lambda u, v: np.nansum(u * v) / ((u * v).count())
+normalized_dotself = lambda u: normalized_dot(u, u)
 
 loyalty_score_dot = {}
-loyalty_score_old = {}
+loyalty_score_rms = {}
 loyalty_score_abs = {}
 for party in parties:
     for mid in members_by_party[party]:
         if party == "무소속":
             loyalty_score_dot[mid] = np.nan
-            loyalty_score_old[mid] = np.nan
+            loyalty_score_rms[mid] = np.nan
             loyalty_score_abs[mid] = np.nan
         else:
-            vivp = normalized_dot(member_vote_df[mid],party_mean_df[party])
-            vpvp = np.sqrt(normalized_dot(member_votenan_df[mid]*party_mean_df[party],member_votenan_df[mid]*party_mean_df[party]))
-            vivi = np.sqrt(normalized_dot(member_vote_df[mid],member_vote_df[mid]))
-            loyalty_score_dot[mid] = vivp/(vpvp*vivi)
+            vivp = normalized_dot(member_vote_df[mid], party_mean_df[party])
+            vpvp = np.sqrt(
+                normalized_dot(
+                    member_votenan_df[mid] * party_mean_df[party],
+                    member_votenan_df[mid] * party_mean_df[party],
+                )
+            )
+            vivi = np.sqrt(normalized_dot(member_vote_df[mid], member_vote_df[mid]))
+            loyalty_score_dot[mid] = vivp / (vpvp * vivi)
 
-            loyalty_score_old[mid] = 1 - 0.5*np.sqrt(normalized_dotself(member_vote_df[mid] - party_mean_df[party]))
+            loyalty_score_rms[mid] = 1 - 0.5 * np.sqrt(
+                normalized_dotself(member_vote_df[mid] - party_mean_df[party])
+            )
 
-            loyalty_score_abs[mid] = normalized_dotself(member_vote_df[mid] * party_sign_df[party])
+            loyalty_score_abs[mid] = normalized_dotself(
+                member_vote_df[mid] * party_sign_df[party]
+            )
 
+##### Frequency voting with DP majority #####
+
+# # let's compute the vote table for DP only for each bill
+# dpvotes=member_vote_df[members_by_party["더불어민주당"]].apply(pd.Series.value_counts, axis=1)
+
+member_dpvote_df = pd.DataFrame(
+    {
+        mid: ((member_vote_df[mid] == party_sign_df["더불어민주당"]).astype(int))
+        * member_votenan_df[mid]
+        for mid in member_ids
+    },
+    columns=member_ids,
+)
+member_dpvotefreq_dict = dict((member_dpvote_df.sum() / member_dpvote_df.count()))
 
 ##### Absentee rates #####
 print("Computing absentee rates")
-member_absenteeism = {mid: member_didvote_df[mid].sum()/member_didvote_df[mid].count() for mid in member_ids}
+member_absenteeism = {
+    mid: member_didvote_df[mid].sum() / member_didvote_df[mid].count()
+    for mid in member_ids
+}
 
 ##### Ages #####
 print("Computing ages")
 member_ages = {mid: AgeFromDOB(member_info_data[mid]["dob"]) for mid in member_ids}
+
+
+##### Save data into a data structure #####
+# TODO
+member_output_df = pd.DataFrame(
+    {
+        "age": member_ages,
+        "absenteeism": member_absenteeism,
+        "dp_vote_freq": member_dpvotefreq_dict,
+        "loyalty_score_dot": loyalty_score_dot,
+        "loyalty_score_rms": loyalty_score_rms,
+        "loyalty_score_abs": loyalty_score_abs,
+    }
+)
+
+party_mean_df
+party_numvoted_df
