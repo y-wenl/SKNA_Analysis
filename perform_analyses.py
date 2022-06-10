@@ -45,7 +45,6 @@ processed_committee_data_filepath = os.path.join(
     processed_data_dir, processed_committee_data_filename
 )
 
-
 # import member list
 print("Reading member data")
 assert os.path.isfile(member_info_filepath)
@@ -148,14 +147,35 @@ for mid in member_reps_dict:
 
 member_votenan_df = member_vote_df.applymap(lambda x: 1 if not np.isnan(x) else np.nan)
 
+##### FIX PARTIES #####
+
+# set party equivalences
+# notes:
+# 1) 미래통합당 is the platform party of 국민의힘
+# 2) 더불어시민당 is the platform party of 더불어민주당
+# 3) 열린민주당 merged into 더불어민주당 in early 2022
+party_equivalence_table = {
+    "더불어민주당": "더불어민주당",
+    "더불어시민당": "더불어민주당",
+    "열린민주당": "더불어민주당",
+    "국민의힘": "국민의힘",
+    "미래통합당": "국민의힘",
+    "정의당": "정의당",
+    "국민의당": "국민의당",
+    "기본소득당": "기본소득당",
+    "시대전환": "시대전환",
+    "무소속": "무소속",
+}
+for mid in member_info_data:
+    member_info_data[mid]["party_group"] = party_equivalence_table[member_info_data[mid]["party"]]
 
 ##### Compute means and party differences #####
 print("Computing means and party differences")
 
 # List parties
-parties = sorted(list(set([member_info_data[x]["party"] for x in member_ids])))
+parties = sorted(list(set([member_info_data[x]["party_group"] for x in member_ids])))
 members_by_party = {
-    party: [x for x in member_ids if member_info_data[x]["party"] == party]
+    party: [x for x in member_ids if member_info_data[x]["party_group"] == party]
     for party in parties
 }
 
@@ -248,7 +268,7 @@ member_dpvotefreq_dict = dict((member_dpvote_df.sum() / member_dpvote_df.count()
 ##### Absentee rates #####
 print("Computing absentee rates")
 member_absenteeism = {
-    mid: member_didvote_df[mid].sum() / member_didvote_df[mid].count()
+    mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
     for mid in member_ids
 }
 
@@ -263,6 +283,7 @@ member_output_df = pd.DataFrame(
     {
         "age": member_ages,
         "absenteeism": member_absenteeism,
+        "party_group": {mid: member_info_data[mid]["party_group"] for mid in member_info_data},
         "dp_vote_freq": member_dpvotefreq_dict,
         "loyalty_score_dot": loyalty_score_dot,
         "loyalty_score_rms": loyalty_score_rms,
