@@ -172,12 +172,38 @@ for mid in member_reps_dict:
 
 member_votenan_df = member_vote_df.applymap(lambda x: 1 if not np.isnan(x) else np.nan)
 
+##### FIX COMMITTEES #####
 
-# Fix capitalization of roman names
+committee_english_table = {
+"과학기술정보방송통신위원회": "Science, ICT, Future Planning, Broadcasting and Communications Committee",
+ "교육위원회": "Education Committee",
+ "국방위원회": "National Defense Committee",
+ "국토교통위원회": "Land, Infrastructure and Transport Committee",
+ "국회운영위원회": "House Steering Committee",
+ "기획재정위원회": "Strategy and Finance Committee",
+ "농림축산식품해양수산위원회": "Agriculture, Food, Rural Affairs, Oceans and Fisheries Committee",
+ "문화체육관광위원회": "Culture, Sports and Tourism Committee",
+ "법제사법위원회": "Legislation and Judiciary Committee",
+ "보건복지위원회": "Health and Welfare Committee",
+ "산업통상자원중소벤처기업위원회": "Trade, Industry, Energy, SMEs, and Startups Committee",
+ "여성가족위원회": "Gender Equality and Family Committee",
+ "외교통일위원회": "Foreign Affairs and Unification Committee",
+ "정무위원회": "National Policy Committee",
+ "정보위원회": "Intelligence Committee",
+ "행정안전위원회": "Public Administration and Security Committee",
+ "환경노동위원회": "Environment and Labor Committee",
+
+ "정치개혁 특별위원회": "Special Committee on Political Reform",
+ "국회상임위원회 위원 정수에 관한 규칙 개정 특별위원회": "Special Committee on Standing Committee Member Number Rules",
+ "본회의": "Plenary",
+ "예산결산특별위원회": "Special Committee on Budget and Accounts",
+ "윤리특별위원회": "Special Committee on Ethics",
+        }
+
 for mid in member_info_data:
-    member_info_data[mid]["roman_name"] = recapitalize(
-        member_info_data[mid]["roman_name"]
-    )
+    member_info_data[mid]["committees"] = [c for c in member_info_data[mid]["committees"] if c]
+    this_committees = member_info_data[mid]["committees"]
+    member_info_data[mid]["committees_en"] = [committee_english_table[c] for c in this_committees]
 
 ##### FIX PARTIES #####
 
@@ -204,6 +230,22 @@ for mid in member_info_data:
     ]
 
 major_parties = ["더불어민주당", "국민의힘", "정의당"]
+
+party_english_table = {
+    "더불어민주당": "Democratic Party of Korea",
+    "더불어시민당": "Platform Party",
+    "열린민주당": "Open Democratic Party",
+    "국민의힘": "People Power Party",
+    "미래통합당": "United Future Party",
+    "정의당": "Justice Party",
+    "국민의당": "People Party",
+    "기본소득당": "Basic Income Party",
+    "시대전환": "Transition Korea",
+    "무소속": "Unaffiliated",
+}
+for mid in member_info_data:
+    member_info_data[mid]["party_en"] = party_english_table[member_info_data[mid]["party"]]
+    member_info_data[mid]["party_group_en"] = party_english_table[member_info_data[mid]["party_group"]]
 
 ##### Compute means and party differences #####
 print("Computing means and party differences")
@@ -358,6 +400,45 @@ party_women = {
 }
 party_women_frac = {party: party_women[party] / party_size[party] for party in parties}
 
+##### Update member_info_data #####
+
+for mid in member_info_data:
+    # Fix capitalization of roman names
+    member_info_data[mid]["roman_name"] = recapitalize(
+        member_info_data[mid]["roman_name"]
+    )
+
+    member_info_data[mid]["age"] = member_ages[mid]
+    member_info_data[mid]["absenteeism"] = member_absenteeism[mid]
+
+    member_info_data[mid]["dp_vote_freq"] = member_party_votefreqs["더불어민주당"][mid]
+    # member_info_data[mid]["gugmin_vote_freq"] = member_party_votefreqs["국민의힘"][mid]
+    # member_info_data[mid]["jeong_vote_freq"] = member_party_votefreqs["정의당"][mid]
+    member_info_data[mid]["dp_alignment"] = member_party_alignments["더불어민주당"][mid]
+    member_info_data[mid]["gugmin_alignment"] = member_party_alignments["국민의힘"][mid]
+    member_info_data[mid]["jeong_alignment"] = member_party_alignments["정의당"][mid]
+    member_info_data[mid]["loyalty_score_dot"] = loyalty_score_dot[mid]
+    member_info_data[mid]["loyalty_score_rms"] = loyalty_score_rms[mid]
+    member_info_data[mid]["loyalty_score_abs"] = loyalty_score_abs[mid]
+
+    this_party_group = member_info_data[mid]["party_group"]
+    this_party = member_info_data[mid]["party"]
+    this_party_fullname = this_party
+    if this_party != this_party_group:
+        this_party_fullname = f"{this_party} ({this_party_group})"
+    member_info_data[mid]["party_fullname"] = this_party_fullname
+
+    this_party_group_en = member_info_data[mid]["party_group_en"]
+    this_party_en = member_info_data[mid]["party_en"]
+    this_party_en_fullname = this_party_en
+    if this_party_en != this_party_group_en:
+        this_party_en_fullname = f"{this_party_en} ({this_party_group_en})"
+    member_info_data[mid]["party_en_fullname"] = this_party_en_fullname
+
+    member_info_data[mid]["partysize"]    = len(members_by_party[this_party_group])
+    member_info_data[mid]["totalmembers"] = len(member_ids)
+
+    # compute ranks for loyalty_score_dot and absenteeism
 
 ##### Save data into a data structure #####
 with open(processed_member_info_filepath, "w") as f:
