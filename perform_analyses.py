@@ -25,14 +25,17 @@ scrape_data_dir = data_super_dir
 bill_subdir = "bills"
 member_info_filename = f"member_info_data_session{session}.json"
 member_reps_filename = "member_replacements.yaml"
+member_manual_filename = "manual_member_info.yaml"
 
 # processed_data_dir = os.path.join(data_super_dir, "processed/")
 processed_data_dir = "ignore/"
 processed_bill_data_filename = f"bill_data_session{session}.json"
 processed_vote_data_filename = f"member_vote_data_session{session}.csv"
 processed_committee_data_filename = f"committee_bill_data_session{session}.csv"
+processed_member_info_filename = f"updated_member_info_data_session{session}.json"
 
 member_reps_filepath = os.path.join(data_super_dir, member_reps_filename)
+member_manual_filepath = os.path.join(data_super_dir, member_manual_filename)
 member_info_filepath = os.path.join(scrape_data_dir, member_info_filename)
 bill_dir = os.path.join(scrape_data_dir, bill_subdir)
 processed_bill_data_filepath = os.path.join(
@@ -43,6 +46,9 @@ processed_vote_data_filepath = os.path.join(
 )
 processed_committee_data_filepath = os.path.join(
     processed_data_dir, processed_committee_data_filename
+)
+processed_member_info_filepath = os.path.join(
+    processed_data_dir, processed_member_info_filename
 )
 
 # import member list
@@ -82,10 +88,26 @@ assert all([x == y for x, y in zip(bill_ids, bill_ids_member)])
 assert all([x == y for x, y in zip(bill_ids, bill_ids_committee)])
 
 
-# import member replacement data and validate it
-# TODO: ignore invalid data instead of dying?
-assert os.path.isfile(member_reps_filepath)
+# import manual member info and update member_info_data accordingly
+assert os.path.isfile(member_manual_filepath)
+with open(member_manual_filepath, "r") as f:
+    input_member_manual_datas = yaml.safe_load(f)
+for mmd in input_member_manual_datas:
+    if str(mmd["session"]) == str(session):
+        for this_mm in mmd["data"]:
+            this_id = str(this_mm["member_id"])
+            this_name = this_mm["name"]
 
+            assert this_id in member_info_data
+            assert member_info_data[this_id]["name"] == this_name
+
+            # update member_info_data
+            member_info_data[this_id].update(this_mm)
+        break  # exit when we've done our session
+
+
+# import member replacement data and validate it
+assert os.path.isfile(member_reps_filepath)
 with open(member_reps_filepath, "r") as f:
     input_member_reps_datas = yaml.safe_load(f)
 
@@ -99,7 +121,10 @@ for mrd in input_member_reps_datas:
             assert this_id in member_info_data
             assert member_info_data[this_id]["name"] == this_name
             member_reps_dict[this_id] = this_mr
-        break
+
+            # update member_info_data
+            member_info_data[this_id].update(this_mr)
+        break  # exit when we've done our session
 
 # Create data on member voting: nan for not in chamber (left or not yet joined); 1 for voted; 0 for absent
 member_didvote_df = member_vote_df.applymap(lambda x: int(not np.isnan(x)))
@@ -147,6 +172,13 @@ for mid in member_reps_dict:
 
 member_votenan_df = member_vote_df.applymap(lambda x: 1 if not np.isnan(x) else np.nan)
 
+
+# Fix capitalization of roman names
+for mid in member_info_data:
+    member_info_data[mid]["roman_name"] = recapitalize(
+        member_info_data[mid]["roman_name"]
+    )
+
 ##### FIX PARTIES #####
 
 # set party equivalences
@@ -167,7 +199,11 @@ party_equivalence_table = {
     "무소속": "무소속",
 }
 for mid in member_info_data:
-    member_info_data[mid]["party_group"] = party_equivalence_table[member_info_data[mid]["party"]]
+    member_info_data[mid]["party_group"] = party_equivalence_table[
+        member_info_data[mid]["party"]
+    ]
+
+major_parties = ["더불어민주당", "국민의힘", "정의당"]
 
 ##### Compute means and party differences #####
 print("Computing means and party differences")
@@ -178,6 +214,7 @@ members_by_party = {
     party: [x for x in member_ids if member_info_data[x]["party_group"] == party]
     for party in parties
 }
+assert(len(set(parties).intersection(set(major_parties))) == len(major_parties))
 
 # Compute party data for each bill
 # 1) mean
@@ -255,15 +292,34 @@ for party in parties:
 # # let's compute the vote table for DP only for each bill
 # dpvotes=member_vote_df[members_by_party["더불어민주당"]].apply(pd.Series.value_counts, axis=1)
 
-member_dpvote_df = pd.DataFrame(
-    {
-        mid: ((member_vote_df[mid] == party_sign_df["더불어민주당"]).astype(int))
-        * member_votenan_df[mid]
-        for mid in member_ids
-    },
-    columns=member_ids,
-)
-member_dpvotefreq_dict = dict((member_dpvote_df.sum() / member_dpvote_df.count()))
+member_party_votefreq_dfs = {}
+member_party_votefreqs = {}
+for party in major_parties:
+    this_vf_df = pd.DataFrame(
+        {
+            mid: ((member_vote_df[mid] == party_sign_df[party]).astype(int))
+            * member_votenan_df[mid]
+            for mid in member_ids
+        },
+        columns=member_ids,
+    )
+    member_party_votefreq_dfs[party] = this_vf_df
+    member_party_votefreqs[party] = dict((this_vf_df.sum() / this_vf_df.count()))
+
+member_party_alignments = {}
+for party in ["더불어민주당", "국민의힘", "정의당"]:
+    member_party_alignments[party] = {}
+    for mid in member_ids:
+        vivp = normalized_dot(member_vote_df[mid], party_mean_df[party])
+        vpvp = np.sqrt(
+            normalized_dot(
+                member_votenan_df[mid] * party_mean_df[party],
+                member_votenan_df[mid] * party_mean_df[party],
+            )
+        )
+        vivi = np.sqrt(normalized_dot(member_vote_df[mid], member_vote_df[mid]))
+        member_party_alignments[party][mid] = vivp / (vpvp * vivi)
+
 
 ##### Absentee rates #####
 print("Computing absentee rates")
@@ -276,18 +332,73 @@ member_absenteeism = {
 print("Computing ages")
 member_ages = {mid: AgeFromDOB(member_info_data[mid]["dob"]) for mid in member_ids}
 
+##### Party average data #####
+party_median_ages = {
+    party: np.median([member_ages[mid] for mid in members_by_party[party]])
+    for party in parties
+}
+party_median_absenteeism = {
+    party: np.median([member_absenteeism[mid] for mid in members_by_party[party]])
+    for party in parties
+}
+party_median_loyalty = {
+    party: np.median([loyalty_score_dot[mid] for mid in members_by_party[party]])
+    for party in parties
+}
+party_size = {party: len(members_by_party[party]) for party in parties}
+party_women = {
+    party: len(
+        [
+            mid
+            for mid in members_by_party[party]
+            if member_info_data[mid]["gender"] == "F"
+        ]
+    )
+    for party in parties
+}
+party_women_frac = {party: party_women[party] / party_size[party] for party in parties}
+
 
 ##### Save data into a data structure #####
+with open(processed_member_info_filepath, "w") as f:
+    json.dump(member_info_data, f, indent=4, ensure_ascii=False)
+
 # TODO
 member_output_df = pd.DataFrame(
     {
+        "name": {mid: member_info_data[mid]["name"] for mid in member_info_data},
+        "roman_name": {
+            mid: member_info_data[mid]["roman_name"] for mid in member_info_data
+        },
+        "district": {
+            mid: member_info_data[mid]["district"] for mid in member_info_data
+        },
+        "gender": {mid: member_info_data[mid]["gender"] for mid in member_info_data},
         "age": member_ages,
         "absenteeism": member_absenteeism,
-        "party_group": {mid: member_info_data[mid]["party_group"] for mid in member_info_data},
-        "dp_vote_freq": member_dpvotefreq_dict,
+        "party_group": {
+            mid: member_info_data[mid]["party_group"] for mid in member_info_data
+        },
+        "dp_vote_freq": member_party_votefreqs["더불어민주당"],
+        # "gugmin_vote_freq": member_party_votefreqs["국민의힘"],
+        # "jeong_vote_freq": member_party_votefreqs["정의당"],
+        "dp_alignment": member_party_alignments["더불어민주당"],
+        "gugmin_alignment": member_party_alignments["국민의힘"],
+        "jeong_alignment": member_party_alignments["정의당"],
         "loyalty_score_dot": loyalty_score_dot,
         "loyalty_score_rms": loyalty_score_rms,
         "loyalty_score_abs": loyalty_score_abs,
+    }
+)
+
+party_output_df = pd.DataFrame(
+    {
+        "party_median_ages": party_median_ages,
+        "party_median_absenteeism": party_median_absenteeism,
+        "party_median_loyalty": party_median_loyalty,
+        "party_size": party_size,
+        "party_women": party_women,
+        "party_women_frac": party_women_frac,
     }
 )
 

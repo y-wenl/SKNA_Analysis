@@ -42,3 +42,9 @@ def AgeFromDOB(dob_str):
         age_years = (last_year - dob_year) + (cur_date - bday_lastyear).total_seconds()/(bday_thisyear - bday_lastyear).total_seconds()
 
     return age_years
+
+
+# Given a roman name, make a capitalized version
+# e.g., YONG HYEIN -> Yong Hyein
+def recapitalize(s):
+    return " ".join([x.capitalize() for x in s.split(" ")])

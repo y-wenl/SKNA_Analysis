@@ -176,4 +176,4 @@ if not debug:
     committees_bill_df.to_csv(processed_committee_data_filepath, index=False)
 
     with open(processed_bill_data_filepath, "w") as f:
-        json.dump(bill_dicts_lite, f, indent=4)
+        json.dump(bill_dicts_lite, f, indent=4, ensure_ascii=False)
