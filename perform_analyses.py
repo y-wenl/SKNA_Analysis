@@ -20,6 +20,14 @@ session = 21
 # set main data directory
 data_super_dir = "../data/"
 
+# output filenames
+# output_data_dir = os.path.join(data_super_dir, "web_data/")
+output_data_dir = "ignore/"
+output_member_data_dir = os.path.join(output_data_dir, "members/")
+members_fullinfo_filename = f"members_fullinfo_session{session}.json"
+members_fullinfo_csv_filename = f"members_fullinfo_session{session}.csv"
+member_vote_filename_base = f"member_vote_data_{session}_ID.json"
+
 # set up subdirectories and filepaths
 scrape_data_dir = data_super_dir
 bill_subdir = "bills"
@@ -32,7 +40,6 @@ processed_data_dir = "ignore/"
 processed_bill_data_filename = f"bill_data_session{session}.json"
 processed_vote_data_filename = f"member_vote_data_session{session}.csv"
 processed_committee_data_filename = f"committee_bill_data_session{session}.csv"
-processed_member_info_filename = f"updated_member_info_data_session{session}.json"
 
 member_reps_filepath = os.path.join(data_super_dir, member_reps_filename)
 member_manual_filepath = os.path.join(data_super_dir, member_manual_filename)
@@ -47,9 +54,21 @@ processed_vote_data_filepath = os.path.join(
 processed_committee_data_filepath = os.path.join(
     processed_data_dir, processed_committee_data_filename
 )
-processed_member_info_filepath = os.path.join(
-    processed_data_dir, processed_member_info_filename
+
+# output filepaths
+members_fullinfo_filepath = os.path.join(
+    output_data_dir, members_fullinfo_filename
 )
+members_fullinfo_csv_filepath = os.path.join(
+    output_data_dir, members_fullinfo_csv_filename
+)
+
+# create output directories if necessary
+if not os.path.isdir(output_data_dir):
+    os.mkdir(output_data_dir)
+if not os.path.isdir(output_member_data_dir):
+    os.mkdir(output_member_data_dir)
+
 
 # import member list
 print("Reading member data")
@@ -172,38 +191,65 @@ for mid in member_reps_dict:
 
 member_votenan_df = member_vote_df.applymap(lambda x: 1 if not np.isnan(x) else np.nan)
 
-##### FIX COMMITTEES #####
+##### TRANSLATE COMMITTEES AND BILL DATA #####
 
 committee_english_table = {
-"과학기술정보방송통신위원회": "Science, ICT, Future Planning, Broadcasting and Communications Committee",
- "교육위원회": "Education Committee",
- "국방위원회": "National Defense Committee",
- "국토교통위원회": "Land, Infrastructure and Transport Committee",
- "국회운영위원회": "House Steering Committee",
- "기획재정위원회": "Strategy and Finance Committee",
- "농림축산식품해양수산위원회": "Agriculture, Food, Rural Affairs, Oceans and Fisheries Committee",
- "문화체육관광위원회": "Culture, Sports and Tourism Committee",
- "법제사법위원회": "Legislation and Judiciary Committee",
- "보건복지위원회": "Health and Welfare Committee",
- "산업통상자원중소벤처기업위원회": "Trade, Industry, Energy, SMEs, and Startups Committee",
- "여성가족위원회": "Gender Equality and Family Committee",
- "외교통일위원회": "Foreign Affairs and Unification Committee",
- "정무위원회": "National Policy Committee",
- "정보위원회": "Intelligence Committee",
- "행정안전위원회": "Public Administration and Security Committee",
- "환경노동위원회": "Environment and Labor Committee",
+    "과학기술정보방송통신위원회": "Science, ICT, Future Planning, Broadcasting and Communications Committee",
+    "교육위원회": "Education Committee",
+    "국방위원회": "National Defense Committee",
+    "국토교통위원회": "Land, Infrastructure and Transport Committee",
+    "국회운영위원회": "House Steering Committee",
+    "기획재정위원회": "Strategy and Finance Committee",
+    "농림축산식품해양수산위원회": "Agriculture, Food, Rural Affairs, Oceans and Fisheries Committee",
+    "문화체육관광위원회": "Culture, Sports and Tourism Committee",
+    "법제사법위원회": "Legislation and Judiciary Committee",
+    "보건복지위원회": "Health and Welfare Committee",
+    "산업통상자원중소벤처기업위원회": "Trade, Industry, Energy, SMEs, and Startups Committee",
+    "여성가족위원회": "Gender Equality and Family Committee",
+    "외교통일위원회": "Foreign Affairs and Unification Committee",
+    "정무위원회": "National Policy Committee",
+    "정보위원회": "Intelligence Committee",
+    "행정안전위원회": "Public Administration and Security Committee",
+    "환경노동위원회": "Environment and Labor Committee",
+    "정치개혁 특별위원회": "Special Committee on Political Reform",
+    "국회상임위원회 위원 정수에 관한 규칙 개정 특별위원회": "Special Committee on Standing Committee Member Number Rules",
+    "본회의": "Plenary",
+    "예산결산특별위원회": "Special Committee on Budget and Accounts",
+    "윤리특별위원회": "Special Committee on Ethics",
+}
 
- "정치개혁 특별위원회": "Special Committee on Political Reform",
- "국회상임위원회 위원 정수에 관한 규칙 개정 특별위원회": "Special Committee on Standing Committee Member Number Rules",
- "본회의": "Plenary",
- "예산결산특별위원회": "Special Committee on Budget and Accounts",
- "윤리특별위원회": "Special Committee on Ethics",
+result_english_table = {
+        "부결": "Rejected",
+        "원안가결": "Passed",
+        "수정가결": "Passed (revised)",
+        }
+kind_english_table = {
+        "동의안": "Agreement",
+        "결의안": "Resolution",
+        "예산안": "Budget bill",
+        "결산": "Settlement of accounts",
+        "승인안": "Approval",
+        "중요동의": "Main motion",
+        "규칙안": "Draft regulation",
+        "법률안": "Legislative bill",
         }
 
 for mid in member_info_data:
-    member_info_data[mid]["committees"] = [c for c in member_info_data[mid]["committees"] if c]
+    member_info_data[mid]["committees"] = [
+        c for c in member_info_data[mid]["committees"] if c
+    ]
     this_committees = member_info_data[mid]["committees"]
-    member_info_data[mid]["committees_en"] = [committee_english_table[c] for c in this_committees]
+    member_info_data[mid]["committees_en"] = [
+        committee_english_table.get(c, c) for c in this_committees
+    ]
+
+for bd in bill_data:
+    this_committee = bd["committee"]
+    bd["committee_en"] = committee_english_table.get(this_committee, this_committee)
+
+    bd["result_en"] = result_english_table[bd["result"]]
+    bd["kind_en"] = kind_english_table.get(bd["kind"], bd["kind"])
+
 
 ##### FIX PARTIES #####
 
@@ -244,8 +290,12 @@ party_english_table = {
     "무소속": "Unaffiliated",
 }
 for mid in member_info_data:
-    member_info_data[mid]["party_en"] = party_english_table[member_info_data[mid]["party"]]
-    member_info_data[mid]["party_group_en"] = party_english_table[member_info_data[mid]["party_group"]]
+    member_info_data[mid]["party_en"] = party_english_table[
+        member_info_data[mid]["party"]
+    ]
+    member_info_data[mid]["party_group_en"] = party_english_table[
+        member_info_data[mid]["party_group"]
+    ]
 
 ##### Compute means and party differences #####
 print("Computing means and party differences")
@@ -256,7 +306,7 @@ members_by_party = {
     party: [x for x in member_ids if member_info_data[x]["party_group"] == party]
     for party in parties
 }
-assert(len(set(parties).intersection(set(major_parties))) == len(major_parties))
+assert len(set(parties).intersection(set(major_parties))) == len(major_parties)
 
 # Compute party data for each bill
 # 1) mean
@@ -363,10 +413,14 @@ for party in ["더불어민주당", "국민의힘", "정의당"]:
         member_party_alignments[party][mid] = vivp / (vpvp * vivi)
 
 
-##### Absentee rates #####
-print("Computing absentee rates")
-member_absenteeism = {
-    mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
+##### Attendance rates #####
+print("Computing attendance rates")
+# member_absenteeism = {
+# mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
+# for mid in member_ids
+# }
+member_attendance = {
+    mid: (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
     for mid in member_ids
 }
 
@@ -379,8 +433,8 @@ party_median_ages = {
     party: np.median([member_ages[mid] for mid in members_by_party[party]])
     for party in parties
 }
-party_median_absenteeism = {
-    party: np.median([member_absenteeism[mid] for mid in members_by_party[party]])
+party_median_attendance = {
+    party: np.median([member_attendance[mid] for mid in members_by_party[party]])
     for party in parties
 }
 party_median_loyalty = {
@@ -402,6 +456,42 @@ party_women_frac = {party: party_women[party] / party_size[party] for party in p
 
 ##### Update member_info_data #####
 
+# compute ranks for loyalty_score_dot and attendance
+loyalty_score_dot_rank = val_dict_to_rank_dict(loyalty_score_dot, reverse=True)
+attendance_rank = val_dict_to_rank_dict(member_attendance, reverse=True)
+loyalty_score_dot_party_rank = {}
+attendance_party_rank = {}
+for party in parties:
+    if party == "무소속":
+        loyalty_score_dot_party_rank.update(
+            {
+                k: np.nan
+                for k, v in loyalty_score_dot.items()
+                if k in members_by_party[party]
+            }
+        )
+        attendance_party_rank.update(
+            {
+                k: np.nan
+                for k, v in member_attendance.items()
+                if k in members_by_party[party]
+            }
+        )
+    else:
+        this_loyalty_score_dot_party = {
+            k: v for k, v in loyalty_score_dot.items() if k in members_by_party[party]
+        }
+        this_attendance_party = {
+            k: v for k, v in member_attendance.items() if k in members_by_party[party]
+        }
+
+        loyalty_score_dot_party_rank.update(
+            val_dict_to_rank_dict(this_loyalty_score_dot_party, reverse=True)
+        )
+        attendance_party_rank.update(
+            val_dict_to_rank_dict(this_attendance_party, reverse=True)
+        )
+
 for mid in member_info_data:
     # Fix capitalization of roman names
     member_info_data[mid]["roman_name"] = recapitalize(
@@ -409,7 +499,7 @@ for mid in member_info_data:
     )
 
     member_info_data[mid]["age"] = member_ages[mid]
-    member_info_data[mid]["absenteeism"] = member_absenteeism[mid]
+    member_info_data[mid]["attendance"] = member_attendance[mid]
 
     member_info_data[mid]["dp_vote_freq"] = member_party_votefreqs["더불어민주당"][mid]
     # member_info_data[mid]["gugmin_vote_freq"] = member_party_votefreqs["국민의힘"][mid]
@@ -417,9 +507,14 @@ for mid in member_info_data:
     member_info_data[mid]["dp_alignment"] = member_party_alignments["더불어민주당"][mid]
     member_info_data[mid]["gugmin_alignment"] = member_party_alignments["국민의힘"][mid]
     member_info_data[mid]["jeong_alignment"] = member_party_alignments["정의당"][mid]
-    member_info_data[mid]["loyalty_score_dot"] = loyalty_score_dot[mid]
-    member_info_data[mid]["loyalty_score_rms"] = loyalty_score_rms[mid]
-    member_info_data[mid]["loyalty_score_abs"] = loyalty_score_abs[mid]
+    member_info_data[mid]["loyalty"] = loyalty_score_dot[mid]
+    # member_info_data[mid]["loyalty_score_rms"] = loyalty_score_rms[mid]
+    # member_info_data[mid]["loyalty_score_abs"] = loyalty_score_abs[mid]
+
+    member_info_data[mid]["loyalty_rank"] = loyalty_score_dot_rank[mid]
+    member_info_data[mid]["attendance_rank"] = attendance_rank[mid]
+    member_info_data[mid]["loyalty_party_rank"] = loyalty_score_dot_party_rank[mid]
+    member_info_data[mid]["attendance_party_rank"] = attendance_rank[mid]
 
     this_party_group = member_info_data[mid]["party_group"]
     this_party = member_info_data[mid]["party"]
@@ -435,53 +530,63 @@ for mid in member_info_data:
         this_party_en_fullname = f"{this_party_en} ({this_party_group_en})"
     member_info_data[mid]["party_en_fullname"] = this_party_en_fullname
 
-    member_info_data[mid]["partysize"]    = len(members_by_party[this_party_group])
+    member_info_data[mid]["partysize"] = len(members_by_party[this_party_group])
     member_info_data[mid]["totalmembers"] = len(member_ids)
 
-    # compute ranks for loyalty_score_dot and absenteeism
-
 ##### Save data into a data structure #####
-with open(processed_member_info_filepath, "w") as f:
+print("Saving members fullinfo json...")
+with open(members_fullinfo_filepath, "w") as f:
     json.dump(member_info_data, f, indent=4, ensure_ascii=False)
 
-# TODO
-member_output_df = pd.DataFrame(
-    {
-        "name": {mid: member_info_data[mid]["name"] for mid in member_info_data},
-        "roman_name": {
-            mid: member_info_data[mid]["roman_name"] for mid in member_info_data
-        },
-        "district": {
-            mid: member_info_data[mid]["district"] for mid in member_info_data
-        },
-        "gender": {mid: member_info_data[mid]["gender"] for mid in member_info_data},
-        "age": member_ages,
-        "absenteeism": member_absenteeism,
-        "party_group": {
-            mid: member_info_data[mid]["party_group"] for mid in member_info_data
-        },
-        "dp_vote_freq": member_party_votefreqs["더불어민주당"],
-        # "gugmin_vote_freq": member_party_votefreqs["국민의힘"],
-        # "jeong_vote_freq": member_party_votefreqs["정의당"],
-        "dp_alignment": member_party_alignments["더불어민주당"],
-        "gugmin_alignment": member_party_alignments["국민의힘"],
-        "jeong_alignment": member_party_alignments["정의당"],
-        "loyalty_score_dot": loyalty_score_dot,
-        "loyalty_score_rms": loyalty_score_rms,
-        "loyalty_score_abs": loyalty_score_abs,
-    }
+print("Saving members fullinfo csv...")
+member_output_df = pd.DataFrame.from_dict(
+    member_info_data,
+    orient="index",
+    columns=[
+        "name",
+        "name_alt",
+        "roman_name",
+        "gender",
+        "dob",
+        "age",
+        "district",
+        "terms",
+        "party",
+        "party_en",
+        "party_group",
+        "party_group_en",
+        "loyalty",
+        "loyalty_rank",
+        "attendance",
+        "attendance_rank",
+        "dp_vote_freq",
+        "dp_alignment",
+        "jeong_alignment",
+        "gugmin_alignment",
+    ],
 )
+member_output_df.index.name = "member_id"
+member_output_df.to_csv(members_fullinfo_csv_filepath)
 
+print("Saving individual member data...")
+for mid in member_ids:
+    this_filename = member_vote_filename_base.replace("ID", str(mid))
+    this_filepath = os.path.join(output_data_dir, this_filename)
+
+    # pd.DataFrame(bill_data, columns=["vote_date", "result", "name", "committee", "bill_id", "bill_no", "id_master"])
+# TODO: save party output
+
+# TODO: save party output
+# print("Saving party data...")
 party_output_df = pd.DataFrame(
     {
         "party_median_ages": party_median_ages,
-        "party_median_absenteeism": party_median_absenteeism,
+        "party_median_attendance": party_median_attendance,
         "party_median_loyalty": party_median_loyalty,
         "party_size": party_size,
         "party_women": party_women,
         "party_women_frac": party_women_frac,
     }
 )
-
 party_mean_df
 party_numvoted_df

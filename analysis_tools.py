@@ -1,4 +1,5 @@
 from datetime import datetime
+import numpy as np
 
 def ymd_to_date(ymd_str):
     ymd_date = None
@@ -48,3 +49,28 @@ def AgeFromDOB(dob_str):
 # e.g., YONG HYEIN -> Yong Hyein
 def recapitalize(s):
     return " ".join([x.capitalize() for x in s.split(" ")])
+
+# Given a dictionary of values produce a dictionary of ranks based on those values
+# e.g.: {"a": 1, "b": 3.3, "c": 0.5, "d": 1} ->
+#       {"a": 2, "b": 4, "c": 1, "d": 2}
+def val_dict_to_rank_dict(d, reverse=False):
+    table = sorted([(val, key) for key, val in d.items() if (val != None) and not np.isnan(val)], reverse=reverse)
+    rank_dict = {}
+    for j in range(0, len(table)):
+        this_item = table[j]
+        if (j == 0):
+            rank_dict[this_item[1]] = j+1
+        else:
+            prev_item = table[j-1]
+            if prev_item[0] == this_item[0]:
+                rank_dict[this_item[1]] = rank_dict[prev_item[1]]
+            else:
+                rank_dict[this_item[1]] = j+1
+
+    for key in d:
+        if d[key] == None:
+            rank_dict[key] = None
+        elif np.isnan(d[key]):
+            rank_dict[key] = np.nan
+
+    return rank_dict
