@@ -1,8 +1,8 @@
-name: SKNA Data Analyzer (python version)
+name: Julia (old) SKNA Data Analyzer
 on:
   workflow_dispatch:
 jobs:
-  Analyze-SKNA-Data-py:
+  Julia-Analyze-SKNA-Data:
     runs-on: ubuntu-latest
     steps:
       - name: Check out SKNA_Analysis code
@@ -17,30 +17,26 @@ jobs:
           path: data
           repository: y-wenl/SKNAData
           token: ${{ secrets.PAT }}
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+      - name: Install Julia
+        uses: julia-actions/setup-julia@v1
         with:
-          python-version: 3.9
-      - name: Install dependencies
+          version: 1.6.2
+      - name: Install Julia dependencies
         run: |
           cd analysis
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Process data
+          #julia --project=. -e 'import Pkg; Pkg.instantiate()'
+          julia -e 'import Pkg; Pkg.add("DelimitedFiles"); Pkg.add("JSON"); Pkg.add("YAML"); Pkg.add(Pkg.PackageSpec(;name="Underscores", version="2.0.0"))'
+      - name: Run analyses
         run: |
           cd analysis
-          python process_data.py
-      - name: Perform analyses
-        run: |
-          cd analysis
-          python perform_analyses.py
+          julia process_data.jl
+          julia web_export.jl
       - name: Commit new data
         run: |
           cd data
           git config user.name "mechazawa"
           git config user.email "mechazawa@local"
-          #git add .
-          #git commit -m "Automated analysis (py) commit" && git push || echo "No data change"
+
           echo "> git diff --stat"
           git diff --stat
           echo "> ls"
@@ -49,3 +45,6 @@ jobs:
           ls processed
           echo "> cat webdata/members/member_vote_data_21_9771260.json"
           cat webdata/members/member_vote_data_21_9771260.json
+
+          #git add .
+          #git commit -m "Automated analysis commit" && git push || echo "No data change"
