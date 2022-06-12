@@ -58,10 +58,12 @@ processed_committee_data_filepath = os.path.join(
 
 # output filepaths
 members_shortinfo_filepath = os.path.join(output_data_dir, members_shortinfo_filename)
-members_fullinfo_filepath = os.path.join(output_data_dir, members_fullinfo_filename)
 members_fullinfo_csv_filepath = os.path.join(
     output_data_dir, members_fullinfo_csv_filename
 )
+
+# note that we put members_fullinfo json in processed_data_dir, not output_data_dir (since it is used by 11ty, not javascript)
+members_fullinfo_filepath = os.path.join(processed_data_dir, members_fullinfo_filename)
 
 # create output directories if necessary
 if not os.path.isdir(output_data_dir):
@@ -614,7 +616,7 @@ member_short_output_df = member_output_df[
 df_to_json_table(member_short_output_df, members_shortinfo_filepath)
 
 print("Saving individual member data...")
-# NOTE: the order is important, since it's hardcoded into the datatables display!!!! But, we'll set it later.
+# NOTE: the order is important, since it's hardcoded into the datatables display!!!!
 bill_data_df = pd.DataFrame(
     bill_data,
     columns=[
