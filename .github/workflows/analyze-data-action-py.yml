@@ -41,7 +41,11 @@ jobs:
           git config user.email "mechazawa@local"
           #git add .
           #git commit -m "Automated analysis (py) commit" && git push || echo "No data change"
+          echo "> git diff --stat"
           git diff --stat
+          echo "> ls"
           ls
+          echo "> ls processed"
           ls processed
+          echo "> cat webdata/members/member_vote_data_21_9771260.json"
           cat webdata/members/member_vote_data_21_9771260.json
