@@ -413,10 +413,10 @@ for party in ["더불어민주당", "국민의힘", "정의당"]:
 
 ##### Attendance rates #####
 print("Computing attendance rates")
-# member_absenteeism = {
-# mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
-# for mid in member_ids
-# }
+member_absenteeism = {
+mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
+for mid in member_ids
+}
 member_attendance = {
     mid: (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
     for mid in member_ids
@@ -457,8 +457,10 @@ party_women_frac = {party: party_women[party] / party_size[party] for party in p
 # compute ranks for loyalty_score_dot and attendance
 loyalty_score_dot_rank = val_dict_to_rank_dict(loyalty_score_dot, reverse=True)
 attendance_rank = val_dict_to_rank_dict(member_attendance, reverse=True)
+absenteeism_rank = val_dict_to_rank_dict(member_absenteeism, reverse=True)
 loyalty_score_dot_party_rank = {}
 attendance_party_rank = {}
+absenteeism_party_rank = {}
 for party in parties:
     if party == "무소속":
         loyalty_score_dot_party_rank.update(
@@ -475,6 +477,13 @@ for party in parties:
                 if k in members_by_party[party]
             }
         )
+        absenteeism_party_rank.update(
+            {
+                k: np.nan
+                for k, v in member_absenteeism.items()
+                if k in members_by_party[party]
+            }
+        )
     else:
         this_loyalty_score_dot_party = {
             k: v for k, v in loyalty_score_dot.items() if k in members_by_party[party]
@@ -482,12 +491,18 @@ for party in parties:
         this_attendance_party = {
             k: v for k, v in member_attendance.items() if k in members_by_party[party]
         }
+        this_absenteeism_party = {
+            k: v for k, v in member_absenteeism.items() if k in members_by_party[party]
+        }
 
         loyalty_score_dot_party_rank.update(
             val_dict_to_rank_dict(this_loyalty_score_dot_party, reverse=True)
         )
         attendance_party_rank.update(
             val_dict_to_rank_dict(this_attendance_party, reverse=True)
+        )
+        absenteeism_party_rank.update(
+            val_dict_to_rank_dict(this_absenteeism_party, reverse=True)
         )
 
 for mid in member_info_data:
@@ -498,6 +513,7 @@ for mid in member_info_data:
 
     member_info_data[mid]["age"] = member_ages[mid]
     member_info_data[mid]["attendance"] = member_attendance[mid]
+    member_info_data[mid]["absenteeism"] = member_absenteeism[mid]
 
     member_info_data[mid]["dp_vote_freq"] = member_party_votefreqs["더불어민주당"][mid]
     # member_info_data[mid]["gugmin_vote_freq"] = member_party_votefreqs["국민의힘"][mid]
@@ -511,8 +527,10 @@ for mid in member_info_data:
 
     member_info_data[mid]["loyalty_rank"] = loyalty_score_dot_rank[mid]
     member_info_data[mid]["attendance_rank"] = attendance_rank[mid]
+    member_info_data[mid]["absenteeism_rank"] = absenteeism_rank[mid]
     member_info_data[mid]["loyalty_party_rank"] = loyalty_score_dot_party_rank[mid]
     member_info_data[mid]["attendance_party_rank"] = attendance_rank[mid]
+    member_info_data[mid]["absenteeism_party_rank"] = absenteeism_rank[mid]
 
     this_party_group = member_info_data[mid]["party_group"]
     this_party = member_info_data[mid]["party"]
@@ -557,6 +575,8 @@ member_output_df = pd.DataFrame.from_dict(
         "loyalty_rank",
         "attendance",
         "attendance_rank",
+        "absenteeism",
+        "absenteeism_rank",
         "dp_vote_freq",
         "dp_alignment",
         "jeong_alignment",
