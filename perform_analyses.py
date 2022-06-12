@@ -245,6 +245,9 @@ for mid in member_info_data:
         committee_english_table.get(c, c) for c in this_committees
     ]
 
+    this_district = member_info_data[mid]["district"]
+    member_info_data[mid]["district_en"] = district_to_en(this_district)
+
 for bd in bill_data:
     this_committee = bd["committee"]
     bd["committee_en"] = committee_english_table.get(this_committee, this_committee)
@@ -570,6 +573,7 @@ member_output_df = pd.DataFrame.from_dict(
         "dob",
         "age",
         "district",
+        "district_en",
         "committees",
         "committees_en",
         "terms",
@@ -602,6 +606,7 @@ member_short_output_df = member_output_df[
         "party",
         "party_en",
         "district",
+        "district_en",
         "terms",
         "age",
         "gender",
