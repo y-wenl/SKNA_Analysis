@@ -1,9 +1,6 @@
 name: SKNA Data Analyzer
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 jobs:
   Analyze-SKNA-Data:
     runs-on: ubuntu-latest
