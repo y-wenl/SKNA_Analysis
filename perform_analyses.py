@@ -21,7 +21,7 @@ session = 21
 data_super_dir = "../data/"
 
 # output filenames
-output_data_dir = os.path.join(data_super_dir, "web_data/")
+output_data_dir = os.path.join(data_super_dir, "webdata/")
 # output_data_dir = "ignore/"
 output_member_data_dir = os.path.join(output_data_dir, "members/")
 members_fullinfo_filename = f"members_fullinfo_session{session}.json"
