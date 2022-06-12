@@ -38,4 +38,4 @@ jobs:
           git config user.email "mechazawa@local"
           #git add .
           #git commit -m "Automated analysis (py) commit" && git push || echo "No data change"
-          git diff
+          git diff --stat
