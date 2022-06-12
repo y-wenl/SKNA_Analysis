@@ -533,8 +533,8 @@ for mid in member_info_data:
     member_info_data[mid]["attendance_rank"] = attendance_rank[mid]
     member_info_data[mid]["absenteeism_rank"] = absenteeism_rank[mid]
     member_info_data[mid]["loyalty_party_rank"] = loyalty_score_dot_party_rank[mid]
-    member_info_data[mid]["attendance_party_rank"] = attendance_rank[mid]
-    member_info_data[mid]["absenteeism_party_rank"] = absenteeism_rank[mid]
+    member_info_data[mid]["attendance_party_rank"] = attendance_party_rank[mid]
+    member_info_data[mid]["absenteeism_party_rank"] = absenteeism_party_rank[mid]
 
     this_party_group = member_info_data[mid]["party_group"]
     this_party = member_info_data[mid]["party"]
