@@ -555,8 +555,7 @@ for mid in member_info_data:
 
 ##### Save data into a data structure #####
 print("Saving members fullinfo json...")
-with open(members_fullinfo_filepath, "w") as f:
-    json.dump(member_info_data, f, indent=4, ensure_ascii=False)
+dump_json_nan_null(member_info_data, members_fullinfo_filepath, indent=4)
 
 print("Saving members fullinfo csv...")
 member_output_df = pd.DataFrame.from_dict(

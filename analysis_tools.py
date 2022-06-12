@@ -1,6 +1,7 @@
 from datetime import datetime
 import numpy as np
 import json
+import re
 
 
 def ymd_to_date(ymd_str):
@@ -100,3 +101,13 @@ def df_to_json_table(df, filepath=None):
     else:
         with open(filepath, "w") as f:
             json.dump(this_json_data, f, indent=0, ensure_ascii=False)
+
+# dump json and replace each NaN with null
+# This simply does a string replacement. However, there is no reason
+# we should ever encounter "NaN" (with that capitalization) in general,
+# so it's probably okay.
+def dump_json_nan_null(data, filepath, indent=0, ensure_ascii=False):
+    s = json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
+    s = re.sub(r"\bNaN\b", "null", s)
+    with open(filepath, "w") as f:
+        f.write(s)
