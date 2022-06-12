@@ -26,10 +26,13 @@ jobs:
           cd analysis
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run analyses
+      - name: Process data
         run: |
           cd analysis
           python process_data.py
+      - name: Perform analyses
+        run: |
+          cd analysis
           python perform_analyses.py
       - name: Commit new data
         run: |
@@ -39,3 +42,6 @@ jobs:
           #git add .
           #git commit -m "Automated analysis (py) commit" && git push || echo "No data change"
           git diff --stat
+          ls
+          ls processed
+          cat webdata/members/member_vote_data_21_9771260.json
