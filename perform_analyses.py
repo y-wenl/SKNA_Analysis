@@ -24,6 +24,7 @@ data_super_dir = "../data/"
 output_data_dir = os.path.join(data_super_dir, "webdata/")
 # output_data_dir = "ignore/"
 output_member_data_dir = os.path.join(output_data_dir, "members/")
+members_shortinfo_filename = f"members_data_{session}.json"
 members_fullinfo_filename = f"members_fullinfo_session{session}.json"
 members_fullinfo_csv_filename = f"members_fullinfo_session{session}.csv"
 member_vote_filename_base = f"member_vote_data_{session}_ID.json"
@@ -56,6 +57,7 @@ processed_committee_data_filepath = os.path.join(
 )
 
 # output filepaths
+members_shortinfo_filepath = os.path.join(output_data_dir, members_shortinfo_filename)
 members_fullinfo_filepath = os.path.join(output_data_dir, members_fullinfo_filename)
 members_fullinfo_csv_filepath = os.path.join(
     output_data_dir, members_fullinfo_csv_filename
@@ -414,8 +416,8 @@ for party in ["더불어민주당", "국민의힘", "정의당"]:
 ##### Attendance rates #####
 print("Computing attendance rates")
 member_absenteeism = {
-mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
-for mid in member_ids
+    mid: 1 - (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
+    for mid in member_ids
 }
 member_attendance = {
     mid: (member_didvote_df[mid].sum() / member_didvote_df[mid].count())
@@ -559,6 +561,7 @@ member_output_df = pd.DataFrame.from_dict(
     member_info_data,
     orient="index",
     columns=[
+        "member_id",
         "name",
         "name_alt",
         "roman_name",
@@ -566,6 +569,8 @@ member_output_df = pd.DataFrame.from_dict(
         "dob",
         "age",
         "district",
+        "committees",
+        "committees_en",
         "terms",
         "party",
         "party_en",
@@ -584,7 +589,28 @@ member_output_df = pd.DataFrame.from_dict(
     ],
 )
 member_output_df.index.name = "member_id"
-member_output_df.to_csv(members_fullinfo_csv_filepath)
+member_output_df.to_csv(members_fullinfo_csv_filepath, index=False)
+
+print("Saving members shortinfo json...")
+member_short_output_df = member_output_df[
+    [
+        "member_id",
+        "name",
+        "roman_name",
+        "gender",
+        "party",
+        "party_en",
+        "district",
+        "age",
+        "terms",
+        "absenteeism",
+        "attendance",
+        "loyalty",
+        "committees",
+        "committees_en",
+    ]
+]
+df_to_json_table(member_short_output_df, members_shortinfo_filepath)
 
 print("Saving individual member data...")
 bill_data_df = pd.DataFrame(
@@ -620,17 +646,7 @@ for mid in member_ids:
 
     this_bill_df = this_bill_df[~np.isnan(member_didvote_df[mid])]
 
-    this_bill_json = this_bill_df.to_json(
-        force_ascii=False, orient="split", index=False
-    )
-    # rename "columns" to "header" and arrange on separate lines
-    this_bill_json_data = json.loads(this_bill_json)
-    this_bill_json_data["header"] = this_bill_json_data.pop("columns")
-    this_bill_json_data["data"] = this_bill_json_data.pop("data")
-    # note: the above pop-push keeps header ahead of data,
-    # since Python 3.7 guarantees insertion order
-    with open(this_filepath, "w") as f:
-        json.dump(this_bill_json_data, f, indent=0, ensure_ascii=False)
+    df_to_json_table(this_bill_df, this_filepath)
 
 
 # TODO: save party output
