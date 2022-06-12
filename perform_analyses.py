@@ -592,17 +592,18 @@ member_output_df.index.name = "member_id"
 member_output_df.to_csv(members_fullinfo_csv_filepath, index=False)
 
 print("Saving members shortinfo json...")
+# NOTE: the order is important, since it's hardcoded into the datatables display!!!!
 member_short_output_df = member_output_df[
     [
         "member_id",
         "name",
         "roman_name",
-        "gender",
         "party",
         "party_en",
         "district",
-        "age",
         "terms",
+        "age",
+        "gender",
         "absenteeism",
         "attendance",
         "loyalty",
@@ -613,20 +614,20 @@ member_short_output_df = member_output_df[
 df_to_json_table(member_short_output_df, members_shortinfo_filepath)
 
 print("Saving individual member data...")
+# NOTE: the order is important, since it's hardcoded into the datatables display!!!! But, we'll set it later.
 bill_data_df = pd.DataFrame(
     bill_data,
     columns=[
         "vote_date",
+        # member_vote inserted here (index 1)
+        # party_vote inserted here (index 2)
         "result",
-        "result_en",
         "name",
         "committee",
         "committee_en",
         "bill_id",
         "bill_no",
         "id_master",
-        "kind",
-        "kind_en",
     ],
 )
 bill_data_df.rename(columns={"vote_date": "date"}, inplace=True)
@@ -639,10 +640,8 @@ for mid in member_ids:
     this_bill_df = bill_data_df.copy()
 
     # add data: member_vote and party_vote
-    this_bill_df = this_bill_df.assign(
-        member_vote=member_vote_df[mid].astype(pd.Int8Dtype()),
-        party_vote=party_sign_df[this_party],
-    )
+    this_bill_df.insert(1, "member_vote", member_vote_df[mid].astype(pd.Int8Dtype()))
+    this_bill_df.insert(2, "party_vote", party_sign_df[this_party])
 
     this_bill_df = this_bill_df[~np.isnan(member_didvote_df[mid])]
 
