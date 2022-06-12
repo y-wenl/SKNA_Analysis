@@ -1,0 +1,39 @@
+name: SKNA Data Analyzer (python version)
+jobs:
+  Analyze-SKNA-Data-py:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out SKNA_Analysis code
+        uses: actions/checkout@v2
+        with:
+          path: analysis
+          repository: y-wenl/SKNA_Analysis
+          token: ${{ secrets.PAT }}
+      - name: Check out data
+        uses: actions/checkout@v2
+        with:
+          path: data
+          repository: y-wenl/SKNAData
+          token: ${{ secrets.PAT }}
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          cd analysis
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run analyses
+        run: |
+          cd analysis
+          python process_data.py
+          python perform_analyses.py
+      - name: Commit new data
+        run: |
+          cd data
+          git config user.name "mechazawa"
+          git config user.email "mechazawa@local"
+          #git add .
+          #git commit -m "Automated analysis (py) commit" && git push || echo "No data change"
+          git diff
