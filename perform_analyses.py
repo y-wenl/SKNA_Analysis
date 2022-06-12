@@ -56,9 +56,7 @@ processed_committee_data_filepath = os.path.join(
 )
 
 # output filepaths
-members_fullinfo_filepath = os.path.join(
-    output_data_dir, members_fullinfo_filename
-)
+members_fullinfo_filepath = os.path.join(output_data_dir, members_fullinfo_filename)
 members_fullinfo_csv_filepath = os.path.join(
     output_data_dir, members_fullinfo_csv_filename
 )
@@ -219,20 +217,20 @@ committee_english_table = {
 }
 
 result_english_table = {
-        "부결": "Rejected",
-        "원안가결": "Passed",
-        "수정가결": "Passed (revised)",
-        }
+    "부결": "Rejected",
+    "원안가결": "Passed",
+    "수정가결": "Passed (revised)",
+}
 kind_english_table = {
-        "동의안": "Agreement",
-        "결의안": "Resolution",
-        "예산안": "Budget bill",
-        "결산": "Settlement of accounts",
-        "승인안": "Approval",
-        "중요동의": "Main motion",
-        "규칙안": "Draft regulation",
-        "법률안": "Legislative bill",
-        }
+    "동의안": "Agreement",
+    "결의안": "Resolution",
+    "예산안": "Budget bill",
+    "결산": "Settlement of accounts",
+    "승인안": "Approval",
+    "중요동의": "Main motion",
+    "규칙안": "Draft regulation",
+    "법률안": "Legislative bill",
+}
 
 for mid in member_info_data:
     member_info_data[mid]["committees"] = [
@@ -569,11 +567,52 @@ member_output_df.index.name = "member_id"
 member_output_df.to_csv(members_fullinfo_csv_filepath)
 
 print("Saving individual member data...")
+bill_data_df = pd.DataFrame(
+    bill_data,
+    columns=[
+        "vote_date",
+        "result",
+        "result_en",
+        "name",
+        "committee",
+        "committee_en",
+        "bill_id",
+        "bill_no",
+        "id_master",
+        "kind",
+        "kind_en",
+    ],
+)
+bill_data_df.rename(columns={"vote_date": "date"}, inplace=True)
 for mid in member_ids:
     this_filename = member_vote_filename_base.replace("ID", str(mid))
-    this_filepath = os.path.join(output_data_dir, this_filename)
+    this_filepath = os.path.join(output_member_data_dir, this_filename)
 
-    # pd.DataFrame(bill_data, columns=["vote_date", "result", "name", "committee", "bill_id", "bill_no", "id_master"])
+    this_party = member_info_data[mid]["party_group"]
+
+    this_bill_df = bill_data_df.copy()
+
+    # add data: member_vote and party_vote
+    this_bill_df = this_bill_df.assign(
+        member_vote=member_vote_df[mid].astype(pd.Int8Dtype()),
+        party_vote=party_sign_df[this_party],
+    )
+
+    this_bill_df = this_bill_df[~np.isnan(member_didvote_df[mid])]
+
+    this_bill_json = this_bill_df.to_json(
+        force_ascii=False, orient="split", index=False
+    )
+    # rename "columns" to "header" and arrange on separate lines
+    this_bill_json_data = json.loads(this_bill_json)
+    this_bill_json_data["header"] = this_bill_json_data.pop("columns")
+    this_bill_json_data["data"] = this_bill_json_data.pop("data")
+    # note: the above pop-push keeps header ahead of data,
+    # since Python 3.7 guarantees insertion order
+    with open(this_filepath, "w") as f:
+        json.dump(this_bill_json_data, f, indent=0, ensure_ascii=False)
+
+
 # TODO: save party output
 
 # TODO: save party output
