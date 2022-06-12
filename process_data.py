@@ -21,8 +21,8 @@ scrape_data_dir = data_super_dir
 bill_subdir = "bills"
 member_info_filename = f"member_info_data_session{session}.json"
 
-# processed_data_dir = os.path.join(data_super_dir, "processed/")
-processed_data_dir = "ignore/"
+processed_data_dir = os.path.join(data_super_dir, "processed/")
+# processed_data_dir = "ignore/"
 processed_bill_data_filename = f"bill_data_session{session}.json"
 processed_vote_data_filename = f"member_vote_data_session{session}.csv"
 processed_committee_data_filename = f"committee_bill_data_session{session}.csv"

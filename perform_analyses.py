@@ -21,8 +21,8 @@ session = 21
 data_super_dir = "../data/"
 
 # output filenames
-# output_data_dir = os.path.join(data_super_dir, "web_data/")
-output_data_dir = "ignore/"
+output_data_dir = os.path.join(data_super_dir, "web_data/")
+# output_data_dir = "ignore/"
 output_member_data_dir = os.path.join(output_data_dir, "members/")
 members_fullinfo_filename = f"members_fullinfo_session{session}.json"
 members_fullinfo_csv_filename = f"members_fullinfo_session{session}.csv"
@@ -35,8 +35,8 @@ member_info_filename = f"member_info_data_session{session}.json"
 member_reps_filename = "member_replacements.yaml"
 member_manual_filename = "manual_member_info.yaml"
 
-# processed_data_dir = os.path.join(data_super_dir, "processed/")
-processed_data_dir = "ignore/"
+processed_data_dir = os.path.join(data_super_dir, "processed/")
+# processed_data_dir = "ignore/"
 processed_bill_data_filename = f"bill_data_session{session}.json"
 processed_vote_data_filename = f"member_vote_data_session{session}.csv"
 processed_committee_data_filename = f"committee_bill_data_session{session}.csv"
