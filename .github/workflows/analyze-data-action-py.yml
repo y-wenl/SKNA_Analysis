@@ -1,4 +1,6 @@
 name: SKNA Data Analyzer (python version)
+on:
+  workflow_dispatch:
 jobs:
   Analyze-SKNA-Data-py:
     runs-on: ubuntu-latest
