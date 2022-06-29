@@ -25,11 +25,13 @@ The code has recently been rewritten in Python; the original Julia code remains 
 
 1. Install python 3 and the packages in `requirements.txt` (pyaml, numpy, pandas).
 
-2. Create the data directory `../data` and run [y-wenl/SKNADataScraper](https://github.com/y-wenl/SKNADataScraper).
+2. Create the data directory `../data` and add the data files `manual_member_info.yaml` and `member_replacements.yaml` from the data repository [y-wenl/SKNAData](https://github.com/y-wenl/SKNAData). These files contain data collected by hand and not scraped.
 
-3. Run `process_data.py`.
+3. Either run [y-wenl/SKNADataScraper](https://github.com/y-wenl/SKNADataScraper) or add all the data from the data repository [y-wenl/SKNAData](https://github.com/y-wenl/SKNAData) to `../data`.
 
-4. Run `perform_analyses.py`.
+4. Run `process_data.py`.
+
+5. Run `perform_analyses.py`.
 
 - Output data will be saved to `../data` (there is currently no configuration option, but you can change the `data_super_dir` variable near the top of `process_data.py` and `perform_analyses.py`.
 
